@@ -2,6 +2,14 @@
   "version": 1,
   "note": "入口契约真源。vite proxy / nginx / 冒烟脚本均由此文件驱动，禁止在他处重复声明分流规则。",
 
+  "architecture": {
+    "principle": "单机自洽（2026-09-12 定为架构原则）",
+    "rule": "门户、Page Engine、Looma、WordPress 必须同机部署，所有 prod 上游一律走回环（127.0.0.1）。禁止跨机 / 跨域上游。",
+    "why": "旧架构把 /v1/ 经明文 HTTP 跨公网打到另一台机器，实测代价是：同一个 /v1/ 出现三个互相冲突的上游声明、跨海 1180ms 延迟、登录密码与令牌走明文、以及靠人工灌回维持的数据一致性。跨机的前提是数据或算力搬不动，而 PE 与 Looma 都是可以搬的软件。",
+    "guard": "scripts/gen-entry.mjs 会拒绝任何非回环的 prod 上游。",
+    "cost": "单机是安全与效能的赢、可用性的输（单点）。补缺口靠「机器可重建」——备份 + 脚本化部署，不靠多机。"
+  },
+
   "dev": {
     "port": 3000,
     "host": "0.0.0.0"
@@ -14,21 +22,15 @@
       "prod": "http://127.0.0.1:5300",
       "env": "VITE_PAGE_ENGINE_PROXY",
       "proxyHostHeader": "$host",
-      "deployNote": "目标态：与门户同机。2026-09-12 阿里云勘察：47.115.168.107 仅监听 80/8080/22，尚未部署 PE。上线前须先部署，否则 /v1/menus|pages|permissions 会 502。"
+      "deployNote": "2026-09-12 勘察：阿里云 47.115.168.107 仅监听 80/8080/22，尚未部署 PE。上线前须先部署，否则 /v1/menus|pages|permissions 会 502。"
     },
     "looma": {
-      "desc": "Looma — 诗词 / RAG / 认证 / 支付（大陆入口）",
-      "dev": "http://api.genz.ltd",
-      "prod": "http://14.29.216.219",
-      "env": "VITE_LOOMA_PROXY",
-      "proxyHostHeader": "14.29.216.219",
-      "deployNote": "prod 取天翼（大陆主写端）：2026-09-12 阿里云实测 11ms。api.genz.ltd 是海外同源实例（git_commit 相同），实测 1180ms，仅用于本地开发。线上 00-szbolent.conf 已按此选择。"
-    },
-    "looma-local": {
-      "desc": "Looma 本机实例（api.genz.ltd 那台机器上的 :5200）",
+      "desc": "Looma — 诗词 / RAG / 认证 / 支付",
       "dev": "http://127.0.0.1:5200",
       "prod": "http://127.0.0.1:5200",
-      "proxyHostHeader": "$host"
+      "env": "VITE_LOOMA_PROXY",
+      "proxyHostHeader": "$host",
+      "deployNote": "2026-09-12 勘察：阿里云尚未部署 Looma。旧架构把它放在天翼 14.29.216.219，由阿里云 nginx 经明文 HTTP 跨公网调用（另有两处冲突声明分别指向 Vultr 139.180.184.25 与 api.genz.ltd）。目标态是部署到本机 :5200，数据一次性搬迁，搬完不再联动。"
     },
     "wordpress": {
       "desc": "WordPress headless — 博客 CMS",
@@ -69,7 +71,7 @@
       "installNote": "线上生效文件名是 00-szbolent.conf（00- 前缀抢先加载，default_server 归门户）。2026-09-12 勘察：deploy.sh 原本装成 szbolent.conf，与生效文件是两个名字，会留下重复 server_name —— 已改为装 00-szbolent.conf。",
       "reservedDomains": {
         "szbolent.cn": "poetries-h5（★ 诗词 H5）",
-        "www.szbolent.cn": "poetries-h5 —— 其入口配置 /etc/nginx/conf.d/szbolent-h5.conf 不在本仓，门户不得声明这两个域名，否则抢站"
+        "www.szbolent.cn": "poetries-h5 —— 其入口配置 /etc/nginx/conf.d/szbolent-h5.conf 不属本仓，门户不得声明这两个域名，否则抢站"
       },
       "clientMaxBodySize": "64m",
       "gzip": true,
@@ -82,11 +84,11 @@
     },
     "api": {
       "file": "nginx-api.genz.ltd.conf",
-      "desc": "api.genz.ltd — Looma API 后端入口（1.14.202.161）",
+      "desc": "api.genz.ltd — Looma API 后端入口（该机自洽，回环 :5200）",
       "listen": 80,
       "defaultServer": false,
       "serverNames": ["api.genz.ltd"],
-      "allToUpstream": "looma-local"
+      "allToUpstream": "looma"
     }
   }
 }

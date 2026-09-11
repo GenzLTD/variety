@@ -48,8 +48,20 @@ function validate(c) {
     }
   }
 
+  // 架构原则：单机自洽 —— prod 上游必须是回环。
+  // 跨机上游（旧架构的形态）带来明文链路、额外延迟、以及多份待对齐的配置与数据。
+  // 只查 prod：dev 留跨机自由，便于本地开发连测试数据。
+  const LOOPBACK = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/
   for (const [name, up] of Object.entries(c.upstreams || {})) {
-    if (!up.prod) errs.push(`上游 ${name} 缺少 prod 目标`)
+    if (!up.prod) {
+      errs.push(`上游 ${name} 缺少 prod 目标`)
+      continue
+    }
+    if (!LOOPBACK.test(up.prod)) {
+      errs.push(
+        `上游 ${name} 的 prod 不是回环地址「${up.prod}」—— 违反单机自洽原则，跨机上游一律不批准`
+      )
+    }
   }
 
   // 保留域名（别人家的站）不得被本仓站点声明，否则会抢站。
