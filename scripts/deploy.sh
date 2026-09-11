@@ -38,11 +38,25 @@ info "4/4 更新 Nginx 配置..."
 scp nginx.conf "$SERVER:$REMOTE_DIR/nginx/szbolent.conf"
 ssh "$SERVER" bash -s <<'ENDSSH'
     set -e
-    cp /var/www/szbolent-portal/nginx/szbolent.conf /etc/nginx/conf.d/szbolent.conf
+    # 线上生效文件名是 00-szbolent.conf（00- 前缀抢先加载 → 门户占 default_server）。
+    # 装成别的名字会与它重复声明 server_name（2026-09-12 实地勘察结论）。
+    cp /var/www/szbolent-portal/nginx/szbolent.conf /etc/nginx/conf.d/00-szbolent.conf
     rm -f /etc/nginx/conf.d/default.conf
 
-    # 检查配置语法并重载
-    nginx -t && systemctl reload nginx
+    # 清掉历史遗留的重名配置（若存在），否则 server_name 重复
+    rm -f /etc/nginx/conf.d/szbolent.conf /etc/nginx/conf.d/bolent-wp.conf
+
+    # 语法检查：conflicting server name 只是 warning，nginx -t 会放行，故显式拦截
+    if ! nginx -t 2>&1 | tee /tmp/nginx-t.log; then
+      echo "❌ nginx 配置语法错误，已中止"; exit 1
+    fi
+    if grep -q "conflicting server name" /tmp/nginx-t.log; then
+      echo "❌ 检测到 server_name 冲突，已中止（另一份入口配置仍在 conf.d/）"
+      grep "conflicting server name" /tmp/nginx-t.log
+      exit 1
+    fi
+
+    systemctl reload nginx
 
     echo "Nginx 配置已更新并重载"
 ENDSSH

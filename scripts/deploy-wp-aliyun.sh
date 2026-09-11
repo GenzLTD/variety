@@ -28,9 +28,10 @@ ssh "$SERVER" "mkdir -p $REMOTE_DIR/themes $REMOTE_DIR/nginx"
 rsync -avz "$PROJECT_ROOT/docker-compose.wp.prod.yml" "$SERVER:$REMOTE_DIR/"
 rsync -avz "$PROJECT_ROOT/design-system/phase3-wordpress/astra-child/" \
   "$SERVER:$REMOTE_DIR/themes/bolent-astra-child/"
-# 入口配置由契约生成，全站共用一份（不再有 scripts/nginx-wp-aliyun.conf 这份重复副本）
+# 入口配置由契约生成（contracts/entry.json → nginx.conf），此处仅留档供比对；
+# 实际安装由 scripts/deploy.sh 负责，不落 conf.d（避免与 00-szbolent.conf 重复 server_name）
 node "$PROJECT_ROOT/scripts/gen-entry.mjs" >/dev/null
-rsync -avz "$PROJECT_ROOT/nginx.conf" "$SERVER:$REMOTE_DIR/nginx/bolent-wp.conf"
+rsync -avz "$PROJECT_ROOT/nginx.conf" "$SERVER:$REMOTE_DIR/nginx/portal-entry.conf.reference"
 
 # 2. 服务器初始化（仅首次）
 info "2/5 安装 Docker + Nginx..."
@@ -85,13 +86,15 @@ docker compose -f docker-compose.wp.prod.yml ps
 ENDSSH
 
 # 5. Nginx
-info "5/5 配置 Nginx..."
+# 入口配置（conf.d/00-szbolent.conf）由 scripts/deploy.sh 统一管理，且已包含 WP 分流
+# （location / → 127.0.0.1:8080）。本脚本不再安装第二份 —— 2026-09-12 勘察：旧的
+# bolent-wp.conf 与 00-szbolent.conf 声明了重叠的 server_name，已在线上被手工停用为 .bak。
+info "5/5 校验 Nginx（入口配置归 deploy.sh 管理）..."
 ssh "$SERVER" bash -s <<'ENDSSH'
 set -euo pipefail
-cp /opt/bolent-wp/nginx/bolent-wp.conf /etc/nginx/conf.d/bolent-wp.conf
-rm -f /etc/nginx/conf.d/default.conf 2>/dev/null || true
+rm -f /etc/nginx/conf.d/bolent-wp.conf
 nginx -t
-systemctl restart nginx
+systemctl reload nginx
 ENDSSH
 
 echo ""

@@ -51,6 +51,19 @@ function validate(c) {
   for (const [name, up] of Object.entries(c.upstreams || {})) {
     if (!up.prod) errs.push(`上游 ${name} 缺少 prod 目标`)
   }
+
+  // 保留域名（别人家的站）不得被本仓站点声明，否则会抢站。
+  // 依据 2026-09-12 阿里云实地勘察：szbolent.cn / www.szbolent.cn 归 poetries-h5。
+  for (const site of Object.values(c.sites || {})) {
+    const reserved = Object.keys(site.reservedDomains || {})
+    if (!reserved.length) continue
+    const clash = (site.serverNames || []).filter((n) => reserved.includes(n))
+    if (clash.length) {
+      errs.push(
+        `${site.file} 声明了保留域名 ${clash.join(', ')} —— ${site.reservedDomains[clash[0]]} 在用，会抢站`
+      )
+    }
+  }
   return errs
 }
 
