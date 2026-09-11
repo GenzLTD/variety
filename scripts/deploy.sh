@@ -46,12 +46,15 @@ ssh "$SERVER" bash -s <<'ENDSSH'
     # 清掉历史遗留的重名配置（若存在），否则 server_name 重复
     rm -f /etc/nginx/conf.d/szbolent.conf /etc/nginx/conf.d/bolent-wp.conf
 
-    # 语法检查：conflicting server name 只是 warning，nginx -t 会放行，故显式拦截
-    if ! nginx -t 2>&1 | tee /tmp/nginx-t.log; then
-      echo "❌ nginx 配置语法错误，已中止"; exit 1
+    # 语法检查：conflicting server name 只是 warning，nginx -t 会放行，故显式拦截。
+    # 注意别写成 `nginx -t | tee`——管道退出码取 tee，在 set -e 下检查会静默失效。
+    if ! nginx -t >/tmp/nginx-t.log 2>&1; then
+      echo "❌ nginx 配置语法错误，已中止"
+      cat /tmp/nginx-t.log
+      exit 1
     fi
     if grep -q "conflicting server name" /tmp/nginx-t.log; then
-      echo "❌ 检测到 server_name 冲突，已中止（另一份入口配置仍在 conf.d/）"
+      echo "❌ 检测到 server_name 冲突，已中止（conf.d/ 里还有另一份入口配置）"
       grep "conflicting server name" /tmp/nginx-t.log
       exit 1
     fi
