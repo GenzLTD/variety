@@ -90,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Component as VueComponent } from 'vue'
+import { type Component as VueComponent } from 'vue'
 import { usePageRenderer } from '@/composables/usePageRenderer'
 import type {
   PageComponent,

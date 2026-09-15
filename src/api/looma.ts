@@ -71,7 +71,7 @@ export async function apiGet<T>(path: string, params?: Record<string, unknown>):
 }
 
 /** POST 请求封装 */
-export async function apiPost<T>(path: string, body?: Record<string, unknown>): Promise<T> {
+export async function apiPost<T>(path: string, body?: object): Promise<T> {
   const { data } = await api.post<T>(v1(path), body ?? {})
   return data
 }

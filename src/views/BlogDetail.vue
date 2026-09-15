@@ -201,7 +201,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { getPostBySlug, getPosts, formatDate, sanitizeHTML, type WPPost } from '@/api/wordpress'
 import {
   DEMOPPI_URL,
@@ -211,7 +211,6 @@ import {
 } from '@/config/growth'
 
 const route = useRoute()
-const router = useRouter()
 
 const post = ref<WPPost | null>(null)
 const relatedPosts = ref<WPPost[]>([])
