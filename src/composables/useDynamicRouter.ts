@@ -80,7 +80,7 @@ function resolveComponent(componentName: string | null | undefined): () => Promi
 // ============================================================
 
 export function useDynamicRouter() {
-  const { isVisible, initialize: initAuth } = usePermission()
+  const { initialize: initAuth } = usePermission()
 
   const loading: Ref<boolean> = ref(false)
 

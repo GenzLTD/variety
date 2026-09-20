@@ -77,7 +77,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDynamicRouter } from '@/composables/useDynamicRouter'
 
 // ── Page Engine 动态菜单 ──
-const { menus, loading: menuLoading, loadMenus } = useDynamicRouter()
+const { menus, loadMenus } = useDynamicRouter()
 
 const navItems = computed(() => menus.value)
 

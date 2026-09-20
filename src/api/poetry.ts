@@ -222,7 +222,7 @@ export const poetryApi = {
   },
 
   /** 随机发现 → Looma GET /v1/poetry/random */
-  async getRandom(params?: { dynasty?: string; season?: string; theme?: string }): Promise<Poem> {
+  async getRandom(_params?: { dynasty?: string; season?: string; theme?: string }): Promise<Poem> {
     const count = 1
     const { data } = await axios.get<{ results: LoomaRandomItem[]; count: number }>(
       v1('/random'),

@@ -139,7 +139,7 @@ import { seoConfig } from '@/config/company'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior(_to, _from, savedPosition) {
     if (savedPosition) {
       return savedPosition
     } else {
@@ -160,7 +160,7 @@ export const menusInit = loadMenus(router, 'szbolent', undefined, 'main')
 
 let menusReady: Promise<void> | null = null
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   // 确保动态路由已加载（首屏 / HMR 重载场景）
   if (!menusReady) {
     if (!routeLoaded.get('szbolent')) {

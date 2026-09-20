@@ -474,7 +474,7 @@ const resetFilters = () => {
 
 // 申请职位
 const showApplyModal = ref(false)
-const selectedJob = ref(null)
+const selectedJob = ref<{ title: string } | null>(null)
 const applicationForm = ref({
   name: '',
   email: '',

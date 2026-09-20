@@ -37,7 +37,9 @@ const currentUser: Ref<UserContext> = ref({
 })
 
 /** 已加载的产品权限缓存（避免重复请求） */
-const permissionCache = new Map<string, string[]>()
+const permissionCache = new Map<string, string>()
+/** 产品级权限列表缓存（loadPermissions 专用） */
+const productPermsCache = new Map<string, string[]>()
 
 /** 初始化中标记 */
 let initializing = false
@@ -192,13 +194,13 @@ export function usePermission() {
    * 批量拉取当前用户在某产品下的所有权限（减少请求数）
    */
   async function loadPermissions(product: ProductId): Promise<string[]> {
-    if (permissionCache.has(product)) {
-      return permissionCache.get(product)!
+    if (productPermsCache.has(product)) {
+      return productPermsCache.get(product)!
     }
 
     try {
       const perms = await apiGet<string[]>(`/permissions/my?product=${product}`)
-      permissionCache.set(product, perms)
+      productPermsCache.set(product, perms)
       return perms
     } catch {
       return []

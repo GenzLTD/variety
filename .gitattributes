@@ -1,2 +1,36 @@
 githooks/** text eol=lf
 *.sh text eol=lf
+
+# ── 扩展（2026-09-16）：verify-offline L1 字节级比对对象强制 LF ──
+# 背景：gen-entry.mjs --check 对 nginx conf 做字节比对，Windows autocrlf
+# checkout 转 CRLF 导致断言假红（本机实测复现）。修 L2 需 lock 一并收敛。
+*.conf        text eol=lf
+*.json        text eol=lf
+*.mjs         text eol=lf
+*.js          text eol=lf
+*.cjs         text eol=lf
+*.ts          text eol=lf
+*.vue         text eol=lf
+*.md          text eol=lf
+*.css         text eol=lf
+*.scss        text eol=lf
+*.html        text eol=lf
+*.yaml        text eol=lf
+*.yml         text eol=lf
+*.toml        text eol=lf
+*.xml         text eol=lf
+
+# 二进制显式标注，防 text=auto 误伤
+*.png         binary
+*.jpg         binary
+*.jpeg        binary
+*.gif         binary
+*.ico         binary
+*.webp        binary
+*.woff        binary
+*.woff2       binary
+*.ttf         binary
+*.otf         binary
+*.eot         binary
+*.zip         binary
+*.pdf         binary

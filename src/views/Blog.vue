@@ -167,11 +167,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { getPosts, getCategories as fetchCategories, formatDate, extractExcerpt, type WPPost, type WPCategory } from '@/api/wordpress'
 
 const route = useRoute()
-const router = useRouter()
 
 // 数据
 const posts = ref<WPPost[]>([])
