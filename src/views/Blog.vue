@@ -5,50 +5,12 @@
       <div class="container">
         <h1 data-aos="fade-up">博客</h1>
         <p data-aos="fade-up" data-aos-delay="100">
-          分享技术洞察、行业动态与最佳实践
+          书架精选：聚合作者博客的优质文章，阅读全文跳转原文
         </p>
       </div>
     </section>
 
-    <!-- 搜索和筛选 -->
-    <section class="blog-filters section-sm">
-      <div class="container">
-        <div class="filters-wrapper">
-          <!-- 搜索框 -->
-          <div class="search-box">
-            <input 
-              v-model="searchQuery"
-              type="text" 
-              placeholder="搜索文章..." 
-              @keyup.enter="handleSearch"
-            />
-            <button @click="handleSearch" class="btn btn-primary">
-              🔍 搜索
-            </button>
-          </div>
-
-          <!-- 分类筛选 -->
-          <div class="category-filter" v-if="categories.length">
-            <button 
-              @click="selectCategory(null)"
-              :class="['filter-btn', { active: selectedCategory === null }]"
-            >
-              全部
-            </button>
-            <button 
-              v-for="cat in categories"
-              :key="cat.id"
-              @click="selectCategory(cat.id)"
-              :class="['filter-btn', { active: selectedCategory === cat.id }]"
-            >
-              {{ cat.name }} ({{ cat.count }})
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 文章列表 -->
+    <!-- 文章列表（书架 feed） -->
     <section class="blog-list section">
       <div class="container">
         <!-- 加载状态 -->
@@ -57,27 +19,28 @@
           <p>加载中...</p>
         </div>
 
-        <!-- 错误 / 降级空态（WP 或 MySQL 不可用） -->
+        <!-- 错误 / 降级空态 -->
         <div v-else-if="error" class="error-state">
           <p>📭 {{ error }}</p>
-          <p class="error-hint">博客内容由 WordPress 提供；服务恢复后即可正常浏览。</p>
-          <button @click="loadPosts" class="btn btn-primary">重试</button>
+          <p class="error-hint">书架内容由作者博客（bolent-shelf-bridge）提供；服务恢复后即可正常浏览。</p>
+          <button @click="loadFeed" class="btn btn-primary">重试</button>
         </div>
 
         <!-- 文章列表 -->
-        <div v-else-if="posts.length" class="posts-grid">
-          <article 
-            v-for="post in posts"
-            :key="post.id"
+        <div v-else-if="items.length" class="posts-grid">
+          <article
+            v-for="item in items"
+            :key="item.id"
             class="post-card"
             data-aos="fade-up"
           >
-            <!-- 特色图片 -->
+            <!-- 封面图 -->
             <div class="post-thumbnail">
-              <img 
-                v-if="getFeaturedImage(post)"
-                :src="getFeaturedImage(post)"
-                :alt="post.title.rendered"
+              <img
+                v-if="item.cover"
+                :src="item.cover"
+                :alt="item.title"
+                loading="lazy"
               />
               <div v-else class="thumbnail-placeholder">
                 📝
@@ -87,11 +50,11 @@
             <!-- 文章内容 -->
             <div class="post-content">
               <div class="post-meta">
-                <span class="post-date">{{ formatDate(post.date) }}</span>
-                <span v-if="getCategories(post).length" class="post-categories">
-                  <span 
-                    v-for="cat in getCategories(post)" 
-                    :key="cat.id"
+                <span class="post-date">{{ formatDate(item.published) }}</span>
+                <span v-if="item.categories.length" class="post-categories">
+                  <span
+                    v-for="cat in item.categories"
+                    :key="cat.slug"
                     class="category-tag"
                   >
                     {{ cat.name }}
@@ -100,26 +63,26 @@
               </div>
 
               <h3 class="post-title">
-                <router-link :to="`/blog/${post.slug}`">
-                  {{ post.title.rendered }}
-                </router-link>
+                <a :href="item.url" target="_blank" rel="noopener noreferrer">
+                  {{ item.title }}
+                </a>
               </h3>
 
-              <p class="post-excerpt">{{ getExcerpt(post) }}</p>
+              <p class="post-excerpt">{{ item.excerpt }}</p>
 
               <div class="post-footer">
-                <router-link :to="`/blog/${post.slug}`" class="read-more">
-                  阅读全文 →
-                </router-link>
-                
-                <div v-if="getAuthor(post)" class="post-author">
-                  <img 
-                    v-if="getAuthor(post)?.avatar_urls"
-                    :src="getAuthor(post)?.avatar_urls['48']"
-                    :alt="getAuthor(post)?.name"
+                <a :href="item.url" target="_blank" rel="noopener noreferrer" class="read-more">
+                  阅读原文 →
+                </a>
+
+                <div v-if="item.author.name" class="post-author">
+                  <img
+                    v-if="item.author.avatar"
+                    :src="item.author.avatar"
+                    :alt="item.author.name"
                     class="author-avatar"
                   />
-                  <span>{{ getAuthor(post)?.name }}</span>
+                  <span>{{ item.author.name }}</span>
                 </div>
               </div>
             </div>
@@ -133,14 +96,14 @@
 
         <!-- 分页 -->
         <div v-if="totalPages > 1" class="pagination">
-          <button 
+          <button
             @click="goToPage(currentPage - 1)"
             :disabled="currentPage === 1"
             class="btn btn-outline"
           >
             ← 上一页
           </button>
-          
+
           <div class="page-numbers">
             <button
               v-for="page in visiblePages"
@@ -152,7 +115,7 @@
             </button>
           </div>
 
-          <button 
+          <button
             @click="goToPage(currentPage + 1)"
             :disabled="currentPage === totalPages"
             class="btn btn-outline"
@@ -168,25 +131,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { getPosts, getCategories as fetchCategories, formatDate, extractExcerpt, type WPPost, type WPCategory } from '@/api/wordpress'
+import { getShelfFeed, formatDate, type ShelfFeedItem } from '@/api/wordpress'
 
 const route = useRoute()
 
 // 数据
-const posts = ref<WPPost[]>([])
-const categories = ref<WPCategory[]>([])
+const items = ref<ShelfFeedItem[]>([])
 const loading = ref(false)
 const error = ref('')
 
 // 分页
 const currentPage = ref(1)
-const totalPosts = ref(0)
 const totalPages = ref(0)
 const perPage = 9
-
-// 筛选
-const searchQuery = ref('')
-const selectedCategory = ref<number | null>(null)
 
 // 计算可见的页码
 const visiblePages = computed(() => {
@@ -194,43 +151,32 @@ const visiblePages = computed(() => {
   const maxVisible = 5
   let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
   let end = Math.min(totalPages.value, start + maxVisible - 1)
-  
+
   if (end - start < maxVisible - 1) {
     start = Math.max(1, end - maxVisible + 1)
   }
-  
+
   for (let i = start; i <= end; i++) {
     pages.push(i)
   }
-  
+
   return pages
 })
 
-// 加载文章列表
-const loadPosts = async () => {
+// 加载书架 feed
+const loadFeed = async () => {
   loading.value = true
   error.value = ''
-  
+
   try {
-    const query: any = {
+    const result = await getShelfFeed({
       page: currentPage.value,
-      per_page: perPage,
-      orderby: 'date',
-      order: 'desc'
-    }
-    
-    if (searchQuery.value) {
-      query.search = searchQuery.value
-    }
-    
-    if (selectedCategory.value) {
-      query.categories = [selectedCategory.value]
-    }
-    
-    const result = await getPosts(query)
-    posts.value = result.posts
-    totalPosts.value = result.total
-    totalPages.value = result.totalPages
+      limit: perPage,
+    })
+
+    items.value = result.items
+    const limit = Math.max(1, result.limit || perPage)
+    totalPages.value = Math.max(1, Math.ceil(result.total / limit))
   } catch (err: any) {
     const msg = String(err?.message || '')
     if (/Failed to fetch|NetworkError|ECONNREFUSED|500|502|503|504/i.test(msg)) {
@@ -238,58 +184,18 @@ const loadPosts = async () => {
     } else {
       error.value = msg || '加载失败，请稍后重试'
     }
-    console.error('加载文章失败:', err)
+    console.error('加载书架失败:', err)
   } finally {
     loading.value = false
   }
-}
-
-// 加载分类
-const loadCategories = async () => {
-  try {
-    const cats = await fetchCategories()
-    categories.value = cats.filter(cat => cat.count > 0)
-  } catch (err) {
-    console.error('加载分类失败:', err)
-  }
-}
-
-// 搜索
-const handleSearch = () => {
-  currentPage.value = 1
-  loadPosts()
-}
-
-// 选择分类
-const selectCategory = (categoryId: number | null) => {
-  selectedCategory.value = categoryId
-  currentPage.value = 1
-  loadPosts()
 }
 
 // 翻页
 const goToPage = (page: number) => {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
-  loadPosts()
+  loadFeed()
   window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-// 辅助函数
-const getFeaturedImage = (post: WPPost) => {
-  return post._embedded?.['wp:featuredmedia']?.[0]?.source_url || ''
-}
-
-const getCategories = (post: WPPost) => {
-  return post._embedded?.['wp:term']?.[0] || []
-}
-
-const getAuthor = (post: WPPost) => {
-  return post._embedded?.author?.[0]
-}
-
-const getExcerpt = (post: WPPost) => {
-  return extractExcerpt(post.excerpt.rendered, 200)
 }
 
 // 监听路由变化
@@ -298,21 +204,19 @@ watch(() => route.query, () => {
     const page = parseInt(route.query.page as string) || 1
     if (page !== currentPage.value) {
       currentPage.value = page
-      loadPosts()
+      loadFeed()
     }
   }
 })
 
 // 初始化
 onMounted(() => {
-  loadCategories()
-  
   const pageQuery = route.query.page
   if (pageQuery) {
     currentPage.value = parseInt(pageQuery as string)
   }
-  
-  loadPosts()
+
+  loadFeed()
 })
 </script>
 

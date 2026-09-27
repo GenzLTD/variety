@@ -305,3 +305,97 @@ export function sanitizeHTML(html: string): string {
     FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
   })
 }
+
+/**
+ * ─────────────────────────────────────────────────────────────
+ * 书架 feed（bolent-shelf-bridge/1）
+ * 职责：只读聚合作者博客（szbolent.cn）的优质篇，卡片跳转 items[].url 回原文。
+ * 协议：SHELF_BRIDGE_PROTOCOL.md §2–§3（/feed 返回 JSON，字段见下方类型）。
+ * ─────────────────────────────────────────────────────────────
+ */
+
+const SHELF_API_BASE = import.meta.env.VITE_SHELF_API_BASE || 'https://szbolent.cn/wp-json/bolent-shelf/v1'
+
+export interface ShelfFeedAuthor {
+  name: string
+  avatar: string | null
+  bio?: string
+}
+
+export interface ShelfFeedTerm {
+  name: string
+  slug: string
+}
+
+export interface ShelfFeedItem {
+  id: number
+  slug: string
+  title: string
+  excerpt: string
+  url: string
+  cover: string | null
+  published: string
+  modified: string
+  author: ShelfFeedAuthor
+  categories: ShelfFeedTerm[]
+  tags: ShelfFeedTerm[]
+  word_count: number
+  reading_minutes: number
+  lang: string
+}
+
+export interface ShelfFeedResponse {
+  protocol: string
+  generated_at: string
+  site: {
+    name: string
+    url: string
+    description: string
+    lang: string
+    icon: string | null
+    author: ShelfFeedAuthor
+  }
+  count: number
+  total: number
+  page: number
+  limit: number
+  items: ShelfFeedItem[]
+  license: { type: string; url: string }
+  feed_url: string
+  rss_url: string
+  badge?: { text: string; html: string }
+}
+
+export interface ShelfFeedQuery {
+  page?: number
+  limit?: number
+  category?: string
+  tag?: string
+}
+
+/**
+ * 拉取书架 feed（JSON）。
+ */
+export async function getShelfFeed(query: ShelfFeedQuery = {}): Promise<ShelfFeedResponse> {
+  const params = new URLSearchParams()
+  if (query.page) params.append('page', String(query.page))
+  if (query.limit) params.append('limit', String(query.limit))
+  if (query.category) params.append('category', query.category)
+  if (query.tag) params.append('tag', query.tag)
+
+  const qs = params.toString()
+  const url = `${SHELF_API_BASE}/feed${qs ? `?${qs}` : ''}`
+
+  try {
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      throw new Error(`书架 feed 错误: ${response.status}`)
+    }
+
+    return fixWordPressEncoding(await response.json())
+  } catch (error) {
+    console.error('获取书架 feed 失败:', error)
+    throw error
+  }
+}
