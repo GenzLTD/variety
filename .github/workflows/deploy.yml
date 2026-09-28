@@ -351,6 +351,16 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then EXTRA="--public"; fi
           ssh $SSH_OPTS deploy "bash ${{ env.OPS_DIR }}/verify-prod.sh $EXTRA"
 
+      # ── 用户可见层验收：真实浏览器渲染顶部导航 ──────────────────
+      # Verify 断言的是服务端链路。curl 门户 /v1/menus 拿 200、验收全绿，
+      # 仍可能因为前端 base 跨域（api.genz.ltd 的 /v1/menus 是 404）而导航为空 ——
+      # 2026-09-28 实测过这种「指标绿、用户看不到」。这条用真 chromium 收口。
+      - name: Verify user-visible nav (headless chromium)
+        run: |
+          set -euo pipefail
+          npx playwright install --with-deps chromium
+          npm run verify:nav
+
       # ── 交付凭据：排障时不用再翻日志猜「到底上的哪一版」 ─────────
       - name: Deployment receipt
         if: always()
