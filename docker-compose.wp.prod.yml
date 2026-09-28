@@ -1,7 +1,27 @@
-# Bolent WordPress 生产环境 — 阿里云 ECS
-# 部署路径: /opt/bolent-wp/
+# Bolent WordPress 生产环境 — 阿里云 ECS 47.115.168.107
 #
-#   docker compose -f docker-compose.wp.prod.yml up -d
+# 部署路径（现场真源）: /opt/szbolent-cn/docker-compose.yml
+#   podman compose -p szbolent-cn -f docker-compose.yml up -d
+#
+# ⚠️ 三条硬约束（都是踩过的坑，改动前先读完）：
+#
+# 1) 顶层 name: 与命令行 -p 必须都是 szbolent-cn。
+#    compose 用「工程名」给资源加前缀，数据卷真名是 szbolent-cn_bolent_wp_data。
+#    工程名一变（换个目录跑就会变，目录名即默认工程名），就会挂到一套全新的
+#    空卷上，表现是「站点突然变成全新 WordPress」——数据没丢，只是没挂上。
+#    原先的工作流把本文件投到 /opt/bolent-wp 下执行，工程名成了 bolent-wp，
+#    结果容器名冲突 + 挂空卷，怎么改都对线上零影响。
+#
+# 2) container_name 必须与现场一致（bolent_wp / bolent_wp_mysql）：改名会让
+#    nginx 上游、运维脚本、备份计划全部失联。
+#
+# 3) 只在「需要重建容器」时才 up -d。发前端产物、换 nginx 入口配置都不需要
+#    碰容器 —— 见 .github/workflows/deploy.yml 的两条触发路径。
+#
+# WP_HOME/WP_SITEURL 由同目录 .env 提供；门户接管 / 之后必须指向
+# https://szbolent.cn，否则 /wp-admin 会跳到裸 IP（证书不匹配 → 后台进不去）。
+
+name: szbolent-cn
 
 services:
   mysql:
@@ -18,7 +38,8 @@ services:
     networks:
       - bolent-wp-net
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      # 口令走容器内环境变量，不写在 argv 上（argv 在 /proc 里同机可见）
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h localhost -uroot"]
       interval: 10s
       timeout: 5s
       retries: 8
@@ -43,8 +64,12 @@ services:
         define('DISALLOW_FILE_EDIT', true);
     volumes:
       - bolent_wp_data:/var/www/html
+      # 子主题以只读挂载方式进容器：CI 往宿主机目录 rsync 即可生效，
+      # 不必进卷、不必 podman cp。Run #14 的病根之一就是主题 rsync 到了一个
+      # 与容器没有任何挂载关系的目录，WP 里永远看不到它。
       - ./themes/bolent-astra-child:/var/www/html/wp-content/themes/bolent-astra-child:ro
     ports:
+      # 只监听回环：对外只经 nginx 入口（/ 归门户 SPA，WP 只留 /wp-json 等通道）
       - "127.0.0.1:8080:80"
     networks:
       - bolent-wp-net

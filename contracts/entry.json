@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "note": "入口契约真源。vite proxy / nginx / 冒烟脚本均由此文件驱动，禁止在他处重复声明分流规则。",
+  "version": 2,
+  "note": "入口契约真源。vite proxy / nginx / 冒烟脚本均由此文件驱动，禁止在他处重复声明分流规则。v2：补 TLS（sites.portal.tls）与 WP 保留路径，见 docs/DEPLOY_PIPELINE_RUN14_POSTMORTEM.md。",
 
   "dev": {
     "port": 3000,
@@ -43,7 +43,10 @@
     { "prefix": "/v1/pages", "upstream": "page-engine", "desc": "页面 Schema（by-path / CRUD）" },
     { "prefix": "/v1/permissions", "upstream": "page-engine", "desc": "RBAC 权限查询与校验" },
     { "prefix": "/v1", "upstream": "looma", "desc": "诗词 / RAG / 认证 / 支付（兜底，须最后声明）" },
-    { "prefix": "/wp-json", "upstream": "wordpress", "desc": "博客 REST 通道" }
+    { "prefix": "/wp-json", "upstream": "wordpress", "desc": "博客 REST 通道（门户 Blog / 书架数据源）" },
+    { "prefix": "/wp-admin", "upstream": "wordpress", "desc": "WP 后台。门户接管 /（static）后 location / 不再回源 WP，后台只能靠这条活着，删了就登不进去" },
+    { "prefix": "/wp-login.php", "upstream": "wordpress", "desc": "WP 登录入口。与 /wp-admin 同因：不加则后台登录页 404" },
+    { "prefix": "/wp-content", "upstream": "wordpress", "desc": "WP 上传媒体。博客正文 HTML 里的图片指向这里，不加则文章配图全碎" }
   ],
 
   "sites": {
@@ -64,11 +67,23 @@
       ],
       "clientMaxBodySize": "64m",
       "gzip": true,
+
+      "tls": {
+        "enabled": true,
+        "desc": "门户外层 TLS。证书由 certbot（webroot）签发，续期由 certbot-renew.timer + /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh 完成；生成器只在契约里声明，不负责签发。",
+        "certDir": "/etc/letsencrypt/live/szbolent.cn",
+        "serverNames": ["szbolent.cn", "www.szbolent.cn"],
+        "acmeWebroot": "/var/www/certbot",
+        "hsts": false,
+        "hstsNote": "HSTS 先关。等 HTTPS 连续稳定运行一个续期周期（≥30 天）再置 true —— 一旦开启出错，浏览器会强制 https 且用户无法回退。",
+        "certHostsNote": "serverNames 必须与证书 SAN 一致，且这些域名的 A 记录必须指向本机；szbolent.com.cn / bolent.cn 目前不解析到本机，故不列入（它们仍走 :80 的 ACME + 301）。"
+      },
+
       "defaultLocation": {
-        "mode": "upstream",
-        "upstream": "wordpress",
+        "mode": "static",
         "staticRoot": "/var/www/szbolent-portal/dist",
-        "switchNote": "mode: upstream → WP 内容站（现状）；mode: static → 门户 SPA 产物接管的切换点。改这里 + 重新生成即可。"
+        "upstream": "wordpress",
+        "switchNote": "2026-09-28 Run #14 起：static → 门户 SPA 产物接管 /（工作流 rsync dist/ 到 staticRoot 后生效）；upstream → 回退为 WP 内容站。改这里 + node scripts/gen-entry.mjs 重新生成，无其它开关。"
       }
     },
     "api": {

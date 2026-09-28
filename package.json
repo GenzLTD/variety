@@ -18,7 +18,9 @@
     "deploy": "bash scripts/deploy.sh",
     "smoke:local": "bash scripts/smoke-local.sh",
     "verify:offline": "bash scripts/verify-offline.sh",
+    "verify:prod": "bash scripts/verify-prod.sh",
     "report:prod": "bash scripts/report-prod.sh",
+    "rotate:db": "bash scripts/rotate-db-password.sh",
     "report:db-env": "bash scripts/report-db-env.sh"
   },
   "dependencies": {
