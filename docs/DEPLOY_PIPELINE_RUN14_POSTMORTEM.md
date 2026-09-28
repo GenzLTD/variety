@@ -155,11 +155,20 @@ bash scripts/report-prod.sh            # 交付回执（只读，含证书 SAN /
 - `verify-prod.sh --public`：**36 通过 / 1 失败**（唯一失败 = Page Engine 未部署，见 §9.5）。
 - `certbot renew --dry-run` → `Congratulations, all simulated renewals succeeded`。
 
-### 7.3 仍未验证
+### 7.3 仍未验证 / 已补验
 
-- **GitHub Actions 工作流本身**：本次是手工等价执行，工作流尚未被 push 触发过。
-  Secrets / SSH action / runner 上的 node+vite 构建这条自动化路径仍属未验证。
+- **GitHub Actions 工作流本身 → 已补验（2026-09-28）**：push `fd10865` 触发
+  run **#15**（id `36362330502`），步骤 1–15 全绿（含 Publish dist 原子切换、
+  Apply nginx & TLS），第 16 步 `Verify` **按预期红在唯一已知缺口** `/v1/menus`
+  （push 不带 `--public`：34 通过 / 1 失败）。
+  交付回执与手工执行互证，两次产物指纹完全一致：
+  `DIST f00cce4f77a9a9b7` / `CONF 4ec8c2b8d6408a8c` / `CERT Dec 11 2026` / `443 2 listener(s)`。
+- **假绿在野的证据**：紧邻的上一条 run `36302760414`（commit `8cdaffb`）结论是
+  **success**，而当时线上 `:443` 没有任何进程监听 —— 旧检查只 curl `127.0.0.1:8080`
+  与「门户 HTTP 200」，两者在「WP 默认页」与「SPA index.html」下都为真，HTTPS 一项断言都没有。
 - 口令轮换的 `--apply`（预演已跑，见 §9.4；现役口令已非泄露值，属预防性动作）。
+- 工作流红在 `/v1/menus` 期间：**这是刻意保留的红**，不是回归。补上 Page Engine 后自然转绿；
+  若把它降级成 WARN，就等于把 §9.5 的缺口重新藏起来。
 
 ---
 
