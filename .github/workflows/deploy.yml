@@ -26,6 +26,10 @@ on:
         description: '重建 WP/MySQL 容器（应用 compose/主题挂载变更；约 20~60s 内容线中断）'
         type: boolean
         default: false
+      deploy_backend:
+        description: '构建并部署 Page Engine（Rust 后端 :5300；首次约 8~12 分钟，之后走缓存）'
+        type: boolean
+        default: false
 
 # 同一时刻只允许一个部署在跑，但不要把正在跑的部署掐掉（避免半装状态）
 concurrency:
@@ -51,6 +55,12 @@ env:
   TLS_EMAIL: admin@szbolent.cn
   ACME_WEBROOT: /var/www/certbot
   WP_HOME_URL: https://szbolent.cn
+  # Page Engine（Rust + Axum :5300）：契约里 /v1/menus|/v1/pages|/v1/permissions
+  # 的上游，也是门户顶部导航的数据源。与 WP 的 compose 工程解耦单独管：
+  # 它只读 looma 库、不碰 WP 数据卷，放进 compose 反而增加碰卷风险。
+  PE_DIR: /opt/page-engine
+  PE_CONTAINER: page-engine
+  PE_NET: szbolent-cn_szbolent-net
 
 jobs:
   deploy:
@@ -269,6 +279,69 @@ jobs:
             --email        "${{ env.TLS_EMAIL }}"
           REMOTE
 
+      # ── Page Engine（Rust 后端 :5300）────────────────────────────
+      # 契约里 /v1/menus、/v1/pages、/v1/permissions 的上游，也是门户顶部导航
+      # （Header.vue 的 navItems）唯一数据源。此前从未部署 → /v1/menus 502、
+      # 导航为空。刻意放在 Verify 之前：先补服务再判验收，不允许「判绿之后再补」。
+      #
+      # 现场约定：
+      #   * /opt/page-engine/.env（0600）由一次性初始化脚本生成，含 DATABASE_URL 与
+      #     JWT_SECRET，不进仓库、不进日志（本步骤只打指纹）。
+      #   * 容器加入 szbolent-cn_szbolent-net，用容器名 bolent_wp_mysql 连库，
+      #     不写死 10.89.x.x（容器重建后 IP 会变）。
+      #   * 只发布 127.0.0.1:5300，与契约/nginx 的 proxy_pass 完全对齐。
+      - name: Page Engine — build image & ship
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy_backend
+        run: |
+          set -euo pipefail
+          docker build -t page-engine:latest backend/
+          docker save page-engine:latest | gzip -1 > "$RUNNER_TEMP/page-engine.tgz"
+          ls -lh "$RUNNER_TEMP/page-engine.tgz"
+          scp $SSH_OPTS "$RUNNER_TEMP/page-engine.tgz" deploy:/tmp/page-engine.tgz
+          ssh $SSH_OPTS deploy 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          PE="${{ env.PE_DIR }}"
+          test -s "$PE/.env" || { echo "::error::$PE/.env 缺失（DATABASE_URL / JWT_SECRET）：先执行 Page Engine 生产初始化"; exit 1; }
+          grep -q '^DATABASE_URL=' "$PE/.env" || { echo "::error::$PE/.env 缺少 DATABASE_URL"; exit 1; }
+          grep -q '^JWT_SECRET='   "$PE/.env" || { echo "::error::$PE/.env 缺少 JWT_SECRET";   exit 1; }
+          echo "env 指纹（不回显明文）: $(sha256sum "$PE/.env" | cut -c1-16)"
+
+          LOADED=$(podman load -i /tmp/page-engine.tgz | tail -1)
+          echo "$LOADED"
+          IMG=$(printf '%s' "$LOADED" | sed 's/^Loaded image: //')
+          [ -n "$IMG" ] || IMG=localhost/page-engine:latest
+
+          # 换新镜像：:5300 只有它占有，停机窗口 < 2s（nginx 侧 502 一闪而过）
+          podman rm -f "${{ env.PE_CONTAINER }}" >/dev/null 2>&1 || true
+          podman run -d --name "${{ env.PE_CONTAINER }}" \
+            --restart=always \
+            --network "${{ env.PE_NET }}" \
+            -p 127.0.0.1:5300:5300 \
+            --env-file "$PE/.env" \
+            "$IMG" >/dev/null
+
+          # 机器重启后自恢复：podman 默认不装 restart 单元
+          systemctl enable --now podman-restart.service >/dev/null 2>&1 || \
+            echo "::warning::podman-restart.service 未启用：机器重启后需手动拉起 page-engine"
+
+          # 就绪等待：首次启动要跑 sqlx 迁移（建表 + 种子），给足 60s。
+          # 不 sleep 定长再判：那正是「跑得慢就说绿」的老毛病。
+          READY=0
+          for i in $(seq 1 30); do
+            if curl -fsS -m 3 "http://127.0.0.1:5300/v1/menus?product=szbolent" -o /tmp/pe-menus.json 2>/dev/null; then READY=1; break; fi
+            sleep 2
+          done
+          if [ "$READY" != 1 ]; then
+            echo "::error::Page Engine 未就绪（/v1/menus 不通）。容器状态与日志："
+            podman ps -a --filter "name=${{ env.PE_CONTAINER }}" --format '{{.Names}} {{.Status}} {{.Image}}' || true
+            podman logs --tail 60 "${{ env.PE_CONTAINER }}" || true
+            exit 1
+          fi
+          echo "✅ /v1/menus 就绪，菜单项 $(grep -o '"title"' /tmp/pe-menus.json | wc -l) 个"
+          head -c 240 /tmp/pe-menus.json; echo
+          podman ps --filter "name=${{ env.PE_CONTAINER }}" --format '{{.Names}} {{.Status}}'
+          REMOTE
+
       # ── 验收：这是「上线成功」的唯一判据 ───────────────────────
       # 断言集见 scripts/verify-prod.sh。任何一条不过，本步骤直接红。
       - name: Verify (hard assertions)
@@ -296,4 +369,6 @@ jobs:
             echo "CERT : $(openssl x509 -in "${{ env.TLS_CERT_DIR }}/fullchain.pem" -noout -enddate | cut -d= -f2)"
           fi
           echo "443  : $(ss -ltn 2>/dev/null | grep -cE ':443\b') listener(s)"
+          PE=$(podman ps --filter name=${{ env.PE_CONTAINER }} --format '{{.Status}}' 2>/dev/null | head -1)
+          echo "PE   : ${PE:-(未部署)}  menus=$(curl -fsS -m 3 'http://127.0.0.1:5300/v1/menus?product=szbolent' 2>/dev/null | grep -o '"title"' | wc -l)"
           REMOTE

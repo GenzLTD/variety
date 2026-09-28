@@ -55,7 +55,13 @@ skip() { printf "  ${YELLOW}⏭  SKIP${NC}  %s\n" "$1"; }
 creq() { curl -sS -m 15 \
   --resolve "${HOST}:443:127.0.0.1" --resolve "${HOST_WWW}:443:127.0.0.1" \
   --resolve "${HOST}:80:127.0.0.1"  --resolve "${HOST_WWW}:80:127.0.0.1" "$@"; }
-ccode() { creq -o /dev/null -w '%{http_code}' "$@"; }
+ccode() { creq -o /dev/null -w '%{http_code}' "$@" 2>/dev/null; }
+proxy_status_ok() {
+  case "$1" in
+    [1-5][0-9][0-9]) [ "$1" != "502" ] && [ "$1" != "504" ] ;;
+    *) return 1 ;;
+  esac
+}
 
 echo ""
 echo "============================================"
@@ -212,16 +218,18 @@ done
 
 # ACME 通道真可达：放一个 token 再取回来（不猜，实测；这是续期失败的唯一先兆）
 TOKEN="variety-acme-probe-$(date +%s)"
-mkdir -p "${ACME_WEBROOT}/.well-known/acme-challenge" 2>/dev/null
-if printf '%s' "$TOKEN" > "${ACME_WEBROOT}/.well-known/acme-challenge/${TOKEN}" 2>/dev/null; then
+ACME_DIR="${ACME_WEBROOT}/.well-known/acme-challenge"
+ACME_FILE="${ACME_DIR}/${TOKEN}"
+if (mkdir -p "$ACME_DIR" && printf '%s' "$TOKEN" > "$ACME_FILE") 2>/dev/null; then
   GOT=$(creq "http://${HOST}/.well-known/acme-challenge/${TOKEN}" 2>/dev/null || echo "")
-  rm -f "${ACME_WEBROOT}/.well-known/acme-challenge/${TOKEN}"
+  rm -f "$ACME_FILE"
   if [ "$GOT" = "$TOKEN" ]; then
     ok "ACME 校验通道可达（.well-known 实测取回一致）"
   else
     no "ACME 校验通道不可达（取回='${GOT}'）—— 证书续期会失败"
   fi
 else
+  rm -f "$ACME_FILE" 2>/dev/null || true
   skip "ACME 通道实测（无写权限: ${ACME_WEBROOT}）"
 fi
 
@@ -268,28 +276,51 @@ fi
 echo ""
 echo "--- 6. 代理分流 ---"
 C=$(ccode "https://${HOST}/v1/")
-if [ "$C" = "502" ] || [ "$C" = "504" ]; then
-  no "/v1 → ${C}（Looma 上游不可达）"
+if proxy_status_ok "$C"; then
+  ok "/v1 → ${C}（HTTP 状态有效且非 502/504）"
 else
-  ok "/v1 → ${C}（非 502/504）"
+  no "/v1 → ${C:-000}（请求失败或 Looma 上游不可达）"
 fi
+# 菜单是「门户顶部导航」的数据源，所以只判「非 502」远远不够。
+# 2026-09-28 实测教训（两处，都必须被这条断言挡住）：
+#   ① Page Engine 从未部署 → /v1/menus 502 → Header 的 navItems 为空；
+#   ② 就算 ①② 修好，若前端 base 指向 api.genz.ltd，浏览器请求的是
+#      https://api.genz.ltd/v1/menus（looma 侧实测 404 not_found），
+#      验收全绿而导航依旧空。故这里升级成硬契约：200 + 是菜单 JSON + 含种子标题。
+MENUS_BODY=$(creq -m 15 "https://${HOST}/v1/menus?product=szbolent" 2>/dev/null || true)
 C=$(ccode "https://${HOST}/v1/menus?product=szbolent")
-if [ "$C" = "502" ] || [ "$C" = "504" ]; then
-  no "/v1/menus → ${C}（Page Engine 上游不可达）"
+if [ "${C:-000}" != "200" ]; then
+  no "/v1/menus → ${C:-000}（期望 200：Page Engine 未起或代理链路不通）"
+elif ! printf '%s' "$MENUS_BODY" | grep -q '"title"'; then
+  no "/v1/menus → 200 但不是菜单 JSON（body 前 120 字: $(printf '%s' "$MENUS_BODY" | head -c 120)）"
+elif ! printf '%s' "$MENUS_BODY" | grep -q '服务'; then
+  no "/v1/menus → 200 但没有 szbolent 菜单种子（库是空的？导航仍会空）"
 else
-  ok "/v1/menus → ${C}（非 502/504）"
+  ok "/v1/menus → 200，$(printf '%s' "$MENUS_BODY" | grep -o '"title"' | wc -l | tr -d ' ') 个菜单项（顶部导航数据源就绪）"
+fi
+
+# 前端 base 回归门禁：产物里出现 api.genz.ltd 绝对地址就意味着 looma 调用绕过了
+# 门户 nginx 的 /v1 分流，菜单又是 404 —— 这正是「指标绿、导航空」的成因。
+if [ -d "$PORTAL_DIST" ] && ls "$PORTAL_DIST"/assets/*.js >/dev/null 2>&1; then
+  if grep -q --include='*.js' -r 'https://api.genz.ltd' "$PORTAL_DIST/assets" 2>/dev/null; then
+    no "产物里存在 https://api.genz.ltd 绝对 base（前端会绕过同源 /v1，顶部导航取不到菜单）"
+  else
+    ok "产物未出现 https://api.genz.ltd 绝对 base（/v1 调用走门户同源分流）"
+  fi
+else
+  skip "前端 base 门禁（未找到 ${PORTAL_DIST}/assets/*.js）"
 fi
 
 # ── 7. 口令卫生（Run #14 日志泄露的回归门禁）──────────────────
 echo ""
 echo "--- 7. 口令卫生 ---"
-for f in $ENV_FILES; do
-  [ -f "$f" ] || { skip "口令卫生（不存在: $f）"; continue; }
+  for f in $ENV_FILES; do
+  [ -f "$f" ] || { skip "口令卫生（不存在: ${f}）"; continue; }
   MODE=$(stat -c '%a' "$f" 2>/dev/null || echo '?')
   if [ "$MODE" = "600" ] || [ "$MODE" = "400" ]; then
-    ok "$f 权限 ${MODE}"
+    ok "${f} 权限 ${MODE}"
   else
-    no "$f 权限 ${MODE}（应 ≤600：同机任意用户可读即等于泄露）"
+    no "${f} 权限 ${MODE}（应 ≤600：同机任意用户可读即等于泄露）"
   fi
 
   BAD=0
@@ -306,9 +337,9 @@ for f in $ENV_FILES; do
     esac
   done < "$f"
   if [ "$BAD" = 1 ]; then
-    no "$f 仍在用 Run #14 日志里泄露过的口令（必须已轮换）"
+    no "${f} 仍在用 Run #14 日志里泄露过的口令（必须已轮换）"
   else
-    ok "$f 不含已知泄露口令"
+    ok "${f} 不含已知泄露口令"
   fi
 done
 

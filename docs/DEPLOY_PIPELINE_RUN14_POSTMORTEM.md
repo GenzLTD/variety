@@ -261,5 +261,57 @@ bash scripts/report-prod.sh            # 交付回执（只读，含证书 SAN /
 - 补齐需要独立一批工作：编译 backend → 建 `looma` 库 + `migrations/` + 种子数据 → JWT 密钥
   → systemd 单元 → 契约里 `/v1/menus|pages|permissions` 指向它 → 重新生成入口配置。
 
+### 9.6 第二处假绿：菜单其实是跨域链路（2026-09-28 晚补记）
+
+§9.5 记「Page Engine 未部署 → 导航空」，**当晚发现这只是成因之一**。前端拉菜单走的是
+`apiGet()`（`src/api/looma.ts`），base 取 `VITE_LOOMA_API_BASE`，而 `.env.production` 里
+填的是 `https://api.genz.ltd` → **浏览器实际请求的是 looma 那台机器，与门户 nginx 无关**：
+
+| 链路 | 地址 | 实测（2026-09-28） |
+|---|---|---|
+| 验收脚本看的那条 | `https://www.szbolent.cn/v1/menus?product=szbolent` | **502**（Page Engine 未部署） |
+| 浏览器真实请求的那条 | `https://api.genz.ltd/v1/menus?product=szbolent` | **404** `{"error":"not_found","message":"Endpoint /v1/menus not found..."}` |
+
+产物内的铁证（`dist/assets/index-*.js`）：`Mh="https://api.genz.ltd".replace(/\/$/,"")`
+—— 即 looma 客户端的 base 被编译成了绝对地址。
+
+**危害等级：这是比 §9.5 更隐蔽的假绿。** 只把 Page Engine 部署到门户这台机器，
+`/v1/menus` 会从 502 变 200、验收 36/0 全绿，而**用户看到的顶部导航仍然是空的** ——
+因为浏览器压根没走这条链路。凡是「断言的对象 ≠ 用户实际走的路径」，绿色都不代表发布成功。
+
+处置：
+1. `.env.production` 的 `VITE_LOOMA_API_BASE` 改**空**（同源）。这不是权宜之计，而是回到
+   契约本来的设计：`contracts/entry.json` 已把 `/v1/menus|/v1/pages|/v1/permissions` 指向
+   page-engine、`/v1` 兜底指向 looma，入口配置由 `gen-entry.mjs` 生成。同源还顺带消掉 CORS。
+   旁证：`.env.example` 与 `.env.production.ip` 里该变量**本来就是空的**，只有
+   `.env.production` 是异类。兜底可用性已实测：`http://api.genz.ltd/v1/endpoints` → 200（无 301）。
+2. `verify-prod.sh` 第 6 节把 `/v1/menus` 从「非 502」升级为**硬契约**：
+   必须 `200` + body 含 `"title"` + 含种子标题（`服务`）。
+3. 新增「前端 base 回归门禁」：产物 `assets/*.js` 里若出现 `https://api.genz.ltd` 绝对地址
+   即判 FAIL —— 它就是「绕过同源 /v1 → 菜单 404」的成因。
+
+### 9.7 Page Engine 生产部署形态（2026-09-28 落地）
+
+现场约束（实测）：x86_64 / 2 核 / 3.5G 内存 / **无 swap** / 29G 可用 / podman 4.9.4；
+MySQL 8.0.46 在容器 `bolent_wp_mysql`，网络 `szbolent-cn_szbolent-net`（10.89.3.11），
+**未发布宿主端口**（宿主机可达该网段，但 127.0.0.1:3306 不通）。
+
+| 决策 | 取值 | 理由 |
+|---|---|---|
+| 编译在哪 | CI runner（`backend/Dockerfile` 多阶段） | 现场无 cargo，且 2 核无 swap 下 rustc 链接 sqlx+casbin 易 OOM；runner 是原生 x86_64，无交叉编译 |
+| 怎么送 | `docker save \| gzip` → `scp` → `podman load` | 不需要镜像仓库；与现场架构一致 |
+| 网络 | 加入 `szbolent-cn_szbolent-net` | 用容器名 `bolent_wp_mysql` 连库，不写死 10.89.x.x（重建容器会变 IP） |
+| 端口 | `-p 127.0.0.1:5300:5300`，容器内 `SERVER_HOST=0.0.0.0` | 与契约 / nginx 的 `proxy_pass 127.0.0.1:5300` 对齐；对外仍只暴露回环 |
+| 库 | `looma` 库 + 专用账号 `looma@%` | 与 WP 的 `bolent_wp` 完全分离；口令随机（`openssl rand -hex 24`），指纹 `b6bb1033c5602c77` |
+| 配置 | `/opt/page-engine/.env`（0600，不入库） | 含 `DATABASE_URL` 与 `JWT_SECRET`（随机 48 字节）；工作流只打指纹不回显 |
+| 迁移 | 镜像内 `migrations/` + 启动时 sqlx 自动迁移 | 001 建表（IF NOT EXISTS）/ 002·003 种子（ON DUPLICATE KEY）均幂等 |
+| 自恢复 | `--restart=always` + `systemctl enable --now podman-restart.service` | podman 默认不装 restart 单元；缺它则机器重启后 :5300 不回来 |
+| 与 WP 的关系 | 独立 `podman run`，不进 WP compose | 它只读 `looma` 库、不碰 WP 数据卷；放进 compose 反而增加「碰卷」风险 |
+| 触发方式 | `workflow_dispatch` 且 `deploy_backend=true` | 与内容线（`recreate_content`）同样的显式开关；步骤**排在 Verify 之前**，杜绝「先判绿再补服务」 |
+
+⚠️ 已知缺口（诚实记录）：`push` 触发的工作流**不会**构建/部署 backend，也**不编译**
+backend。若某次提交改坏了 Rust 代码，只有人手动 dispatch 时才会暴露。补法是再加一个
+`paths: ['backend/**']` 触发的小作业只跑 `docker build`（不部署），尚未实施。
+
 
 
