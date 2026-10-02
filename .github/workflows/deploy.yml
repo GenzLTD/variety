@@ -1,39 +1,29 @@
-name: Deploy portal to Aliyun (portal + TLS)
+name: Deploy portal to Tencent (szbolent.com.cn)
 
-# ── 触发面设计（Run #14 复盘后确定）─────────────────────────────
-#   push(main)        → 发布面：构建门户 → 发产物 → 装 nginx(含 TLS 引导) → 硬验收。
-#                       这条路径不碰 WP 容器、不碰数据卷，可反复跑、可原子回滚。
-#   workflow_dispatch → 内容面：确实需要重建 WP/MySQL 容器时才用（默认关闭）。
-#                       recreate_content=true 会先做数据卷非空预检，防止挂空卷。
+# 橱窗只发腾讯云。szbolent-portal 已废弃，门户由本仓（variety）接替。
 #
-# ── 与 Run #14 的差别（see docs/DEPLOY_PIPELINE_RUN14_POSTMORTEM.md）──
-#   1. 目标目录改为真实在跑的 /opt/szbolent-cn。原 /opt/bolent-wp 是另一套
-#      compose 工程：容器名冲突（同名容器已在运行）+ 会挂到一套全新空卷，
-#      所以工作流"成功"但对线上零影响 —— 这是"加了 src 却不上线"的真因。
-#   2. 补上门户产物的构建与发布步骤（原来只有 rsync nginx.conf 与主题，
-#      dist/ 从未离开 runner）。
-#   3. 每个远端步骤首行 set -euo pipefail。原来脚本最后一句是 echo
-#      "⏭ 主题文件已通过 rsync 即时生效"，中间命令失败了也返回 0 → 假绿。
-#   4. 验收换成 scripts/verify-prod.sh 的硬断言。原来只 curl WP 的 :8080，
-#      "HTTP 200" 在 WP 默认页与 SPA 首页两种情况下都为真，HTTPS 更是零断言。
+# 禁止发布到阿里云 47.115.168.107。那台机器是 szbolent.cn 个人书店
+# （WordPress）。本工作流若再把门户 SPA 和 nginx 装上去，会用 location /
+# 盖住博客首页和 /poem/ 原文页。书店的正文、容器、证书都不由这里动。
+#
+# 发布面：构建门户 → 只把 dist 换到腾讯云 1.14.202.161 的
+# /var/www/szbolent-portal/dist。不改书店机，不重建 WP，不装阿里云 nginx。
+# nginx 以腾讯云机器上的站点为准；只有手动勾选 install_nginx_config
+# 才把仓库里的 nginx-tencent-portal.conf 装上去。
 
 on:
   push:
-    branches: [main]
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
-      recreate_content:
-        description: '重建 WP/MySQL 容器（应用 compose/主题挂载变更；约 20~60s 内容线中断）'
-        type: boolean
-        default: false
-      deploy_backend:
-        description: '构建并部署 Page Engine（Rust 后端 :5300；首次约 8~12 分钟，之后走缓存）'
+      install_nginx_config:
+        description: '把 nginx-tencent-portal.conf 装到腾讯云（默认否：机器为准）'
         type: boolean
         default: false
 
-# 同一时刻只允许一个部署在跑，但不要把正在跑的部署掐掉（避免半装状态）
 concurrency:
-  group: deploy-prod
+  group: deploy-tencent-portal
   cancel-in-progress: false
 
 permissions:
@@ -41,36 +31,38 @@ permissions:
 
 env:
   SSH_OPTS: '-o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o BatchMode=yes -o StrictHostKeyChecking=no'
-  # 现场真源：真正在跑的 compose 工程目录。工程名（= 目录名）决定数据卷名
-  # szbolent-cn_bolent_wp_data 与网络名，换目录就会换卷。
-  COMPOSE_DIR: /opt/szbolent-cn
-  THEME_HOME: /opt/szbolent-cn/themes/bolent-astra-child
-  PORTAL_ROOT: /var/www/szbolent-portal
+  # 写死。不要从 DEPLOY_HOST 回落到 47.115.168.107。
+  DEPLOY_HOST: 1.14.202.161
+  DEPLOY_USER: ubuntu
+  FORBIDDEN_HOST: 47.115.168.107
   PORTAL_DIST: /var/www/szbolent-portal/dist
-  OPS_DIR: /var/www/szbolent-portal/ops
-  NGINX_DST: /etc/nginx/conf.d/00-szbolent.conf
-  TLS_DOMAINS: szbolent.cn www.szbolent.cn
-  TLS_CERT_NAME: szbolent.cn
-  TLS_CERT_DIR: /etc/letsencrypt/live/szbolent.cn
-  TLS_EMAIL: admin@szbolent.cn
-  ACME_WEBROOT: /var/www/certbot
-  WP_HOME_URL: https://szbolent.cn
-  # Page Engine（Rust + Axum :5300）：契约里 /v1/menus|/v1/pages|/v1/permissions
-  # 的上游，也是门户顶部导航的数据源。与 WP 的 compose 工程解耦单独管：
-  # 它只读 looma 库、不碰 WP 数据卷，放进 compose 反而增加碰卷风险。
-  PE_DIR: /opt/page-engine
-  PE_CONTAINER: page-engine
-  PE_NET: szbolent-cn_szbolent-net
+  NGINX_DST: /etc/nginx/sites-available/szbolent-portal-tencent
+  SITE_URL: https://www.szbolent.com.cn/
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # 生产环境：在 GitHub 里给 environment 挂审批/密钥即可，无需改本文件
+    timeout-minutes: 20
     environment: production
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Refuse Aliyun bookstore host
+        run: |
+          set -euo pipefail
+          if [ "${{ env.DEPLOY_HOST }}" = "${{ env.FORBIDDEN_HOST }}" ]; then
+            echo "::error::拒绝发布到阿里云 ${{ env.FORBIDDEN_HOST }}（szbolent.cn 个人书店）"
+            exit 1
+          fi
+          case "${{ env.DEPLOY_HOST }}" in
+            47.115.*)
+              echo "::error::拒绝发布到阿里云网段 ${{ env.DEPLOY_HOST }}"
+              exit 1
+              ;;
+          esac
+          echo "发布目标: ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} （腾讯云橱窗）"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -81,7 +73,6 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      # 契约是入口配置的唯一真源：产物与契约漂移必须在构建阶段就红，而不是上线后
       - name: Contract sync gate (gen-entry --check)
         run: node scripts/gen-entry.mjs --check
 
@@ -95,21 +86,8 @@ jobs:
         run: |
           set -euo pipefail
           test -s dist/index.html || { echo "::error::dist/index.html 不存在或为空"; exit 1; }
-          grep -q 'id="app"' dist/index.html || { echo "::error::dist/index.html 里没有 Vue 挂载点，构建产物不对"; exit 1; }
+          grep -q 'id="app"' dist/index.html || { echo "::error::dist/index.html 里没有 Vue 挂载点"; exit 1; }
           ls dist/assets/*.js >/dev/null 2>&1 || { echo "::error::dist/assets 下没有 js 产物"; exit 1; }
-          echo "产物大小: $(du -sh dist | cut -f1)；文件数: $(find dist -type f | wc -l)"
-
-      # TLS 引导态：证书就绪前必须能先把 :80 装上去（含 ACME 通道），
-      # 否则带 ssl_certificate 的配置会因证书缺失让 nginx -t 失败、整机 nginx 卡住。
-      - name: Generate nginx configs (final + TLS bootstrap)
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/nginx"
-          node scripts/gen-entry.mjs --http-only > "$RUNNER_TEMP/nginx/szbolent.http-only.conf"
-          test -s nginx.conf || { echo "::error::nginx.conf 未生成"; exit 1; }
-          test -s "$RUNNER_TEMP/nginx/szbolent.http-only.conf" || { echo "::error::引导态配置未生成"; exit 1; }
-          grep -q 'listen 443 ssl' nginx.conf || { echo "::error::正式配置里没有 443"; exit 1; }
-          grep -q 'acme-challenge' nginx.conf || { echo "::error::正式配置里没有 ACME 通道"; exit 1; }
 
       - name: Setup SSH
         uses: shimataro/ssh-key-action@v2
@@ -118,267 +96,52 @@ jobs:
           known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
           config: |
             Host deploy
-              HostName ${{ secrets.DEPLOY_HOST || '47.115.168.107' }}
-              User root
+              HostName ${{ env.DEPLOY_HOST }}
+              User ${{ env.DEPLOY_USER }}
 
-      # 远端前置：一台机器一次性备齐，之后部署不再依赖现场手工装的东西
-      - name: Ensure server prerequisites
-        run: |
-          ssh $SSH_OPTS deploy 'bash -s' <<'REMOTE'
-          set -euo pipefail
-          if ! command -v rsync >/dev/null 2>&1; then
-            dnf install -y rsync >/dev/null 2>&1 || yum install -y rsync >/dev/null 2>&1 || \
-              (apt-get update -qq && apt-get install -y -qq rsync)
-          fi
-          for d in "${{ env.PORTAL_ROOT }}" "${{ env.PORTAL_DIST }}" "${{ env.OPS_DIR }}" \
-                   "${{ env.PORTAL_ROOT }}/nginx" "${{ env.ACME_WEBROOT }}/.well-known/acme-challenge"; do
-            mkdir -p "$d"
-          done
-          command -v nginx   >/dev/null 2>&1 || { echo "::error::服务器上没有 nginx";   exit 1; }
-          command -v certbot >/dev/null 2>&1 || { echo "::error::服务器上没有 certbot"; exit 1; }
-          echo ":nginx-version:$(nginx -v 2>&1)  $(certbot --version 2>&1)"
-          REMOTE
-
-      # ── 发布门户产物 ───────────────────────────────────────────
-      # 现场实测：Run #14 之后 dist/ 从未离开过 runner。这一步是「src 改动上线」
-      # 的实际承载 —— 产物先传到 dist.new，再整目录 mv 换上去，读者不会撞到
-      # 半新半旧的目录。
       - name: Publish portal dist (atomic swap)
         run: |
-          rsync -az --delete --itemize-changes \
-            -e "ssh $SSH_OPTS" \
-            dist/ deploy:${{ env.PORTAL_ROOT }}/dist.new/
-          ssh $SSH_OPTS deploy 'bash -s' <<'REMOTE'
           set -euo pipefail
-          D="${{ env.PORTAL_DIST }}"; N="${D}.new"; P="${D}.prev"
-          test -s "$N/index.html" || { echo "::error::新产物没传完整（$N/index.html 缺失）"; exit 1; }
-          rm -rf "$P"
-          if [ -d "$D" ]; then mv "$D" "$P"; fi
-          mv "$N" "$D"
-          chmod -R a+rX "$D"          # nginx worker 用户必须能读
-          test -s "$D/index.html" || { echo "::error::切换后 index.html 不见了"; exit 1; }
-          echo "✅ 门户产物已发布: $(find "$D" -type f | wc -l) 个文件 / $(du -sh "$D" | cut -f1)；上一版留在 $P"
-          echo "   入口文件: $(head -c 200 "$D/index.html" | tr -d '\n' | cut -c1-120)..."
+          ssh $SSH_OPTS deploy "mkdir -p ${{ env.PORTAL_DIST }}.new"
+          rsync -az --delete -e "ssh $SSH_OPTS" dist/ deploy:${{ env.PORTAL_DIST }}.new/
+          ssh $SSH_OPTS deploy 'bash -s' <<REMOTE
+          set -euo pipefail
+          D="${{ env.PORTAL_DIST }}"; N="\${D}.new"; P="\${D}.prev"
+          test -s "\$N/index.html" || { echo "::error::新产物没传完整"; exit 1; }
+          rm -rf "\$P"
+          if [ -d "\$D" ]; then mv "\$D" "\$P"; fi
+          mv "\$N" "\$D"
+          chmod -R a+rX "\$D"
+          test -s "\$D/index.html" || { echo "::error::切换后 index.html 不见了"; exit 1; }
+          echo "门户产物已发布到腾讯云: \$(find "\$D" -type f | wc -l) 个文件"
           REMOTE
 
-      # ── 暂存 nginx 配置与运维脚本 ──────────────────────────────
-      # nginx.conf 由 contracts/entry.json 生成（构建阶段已过 --check 门禁）。
-      # 引导态配置与正式配置一起推上去：现场按「先 :80、签证书、再 :443」安装。
-      - name: Stage nginx configs & ops scripts
-        run: |
-          rsync -az -e "ssh $SSH_OPTS" \
-            "$RUNNER_TEMP/nginx/szbolent.http-only.conf" \
-            deploy:${{ env.PORTAL_ROOT }}/nginx/szbolent.http-only.conf
-          rsync -az -e "ssh $SSH_OPTS" \
-            nginx.conf deploy:${{ env.PORTAL_ROOT }}/nginx/szbolent.conf.new
-          rsync -az -e "ssh $SSH_OPTS" \
-            scripts/apply-nginx.sh scripts/verify-prod.sh deploy:${{ env.OPS_DIR }}/
-          ssh $SSH_OPTS deploy "chmod 0755 ${{ env.OPS_DIR }}/apply-nginx.sh ${{ env.OPS_DIR }}/verify-prod.sh && ls -l ${{ env.OPS_DIR }}"
-
-      # ── 内容线（仅在显式勾选时执行）─────────────────────────────
-      # 为什么默认关闭：这条路径要重建容器，而「重建」是唯一可能碰到数据卷的操作。
-      # 现场数据是绑在卷 szbolent-cn_bolent_wp_data 上的，卷名由 compose 工程名
-      # （= 目录名）决定。换目录跑 = 挂到一套全新空卷 = 站点瞬间变成全新安装。
-      # 所以这里用 -p szbolent-cn 钉死工程名，并在重建前做「卷存在且非空」预检。
-      - name: Content line — deploy theme & recreate containers
-        if: github.event_name == 'workflow_dispatch' && inputs.recreate_content
-        run: |
-          rsync -az --delete -e "ssh $SSH_OPTS" \
-            design-system/phase3-wordpress/astra-child/ deploy:${{ env.THEME_HOME }}/
-          rsync -az -e "ssh $SSH_OPTS" \
-            docker-compose.wp.prod.yml deploy:${{ env.COMPOSE_DIR }}/docker-compose.yml.new
-          ssh $SSH_OPTS deploy 'bash -s' <<'REMOTE'
-          set -euo pipefail
-          cd "${{ env.COMPOSE_DIR }}"
-
-          # 1) 用哪个运行时：现场是 podman 起的容器（容器名 bolent_wp）
-          if command -v podman >/dev/null 2>&1 && podman ps --format '{{.Names}}' | grep -qx bolent_wp; then
-            RT=podman
-          elif command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' | grep -qx bolent_wp; then
-            RT=docker
-          else
-            echo "::error::没找到正在运行的 bolent_wp 容器，拒绝重建（先确认现场状态）"; exit 1
-          fi
-          echo "运行时: $RT"
-
-          # 2) 预检：数据卷必须存在且非空
-          VOL=$($RT volume ls --format '{{.Name}}' | grep -E 'bolent_wp_data$' | head -1)
-          [ -n "${VOL:-}" ] || { echo "::error::找不到 WP 数据卷（*bolent_wp_data），拒绝重建"; exit 1; }
-          MNT=$($RT volume inspect "$VOL" --format '{{.Mountpoint}}')
-          [ -d "$MNT/wp-content" ] || { echo "::error::卷 $VOL 里没有 wp-content，疑似空卷，拒绝重建"; exit 1; }
-          echo "✅ 数据卷: $VOL ($(du -sh "$MNT" 2>/dev/null | cut -f1))"
-
-          # 3) 站点地址口径：门户接管 / 之后，WP 的跳转必须落在 https://<域名>，
-          #    否则后台会跳到 http://<IP>（证书不匹配 → 后台进不去）。
-          touch .env; chmod 600 .env
-          cp -p .env ".env.bak.$(date +%Y%m%d%H%M%S)"
-          sed -i '/^WP_HOME=/d;/^WP_SITEURL=/d' .env
-          printf 'WP_HOME=%s\nWP_SITEURL=%s\n' "${{ env.WP_HOME_URL }}" "${{ env.WP_HOME_URL }}" >> .env
-          echo "✅ .env 已设定 WP_HOME/WP_SITEURL=${{ env.WP_HOME_URL }}（权限 $(stat -c '%a' .env)）"
-
-          # 4) 应用 compose
-          if diff -q docker-compose.yml docker-compose.yml.new >/dev/null 2>&1; then
-            echo "⏭ compose 无变化"; rm -f docker-compose.yml.new
-          else
-            cp -p docker-compose.yml "docker-compose.yml.bak.$(date +%Y%m%d%H%M%S)"
-            mv docker-compose.yml.new docker-compose.yml
-            echo "✅ compose 已更新（旧版已备份）"
-          fi
-          if $RT compose version >/dev/null 2>&1; then CMD="$RT compose"; else CMD="podman-compose"; fi
-          # -p 钉死工程名：podman-compose 未必认 compose 文件里的顶层 name:，
-          # 不钉的话换个目录跑就会换一套卷/一套网络。
-          #
-          # ⚠️ 这里必须过 redact：podman-compose 会把内部执行的
-          # `podman run -e MYSQL_ROOT_PASSWORD=<明文> -e MYSQL_PASSWORD=<明文> ...`
-          # 整条命令回显到 stdout —— Run #14 的日志泄露就是这条命令造成的。
-          # 也就是说「日志里出现口令」不是意外，而是必然：不过滤就会再泄露一次。
-          redact() { sed -E 's/([A-Za-z_]*PASSWORD|MYSQL_[A-Z_]*)=([^ ][^ ]*)/\1=***REDACTED***/g'; }
-          OUT=$($CMD -p szbolent-cn -f docker-compose.yml up -d 2>&1) || {
-            echo "::error::compose 启动失败"
-            printf '%s\n' "$OUT" | redact
-            exit 1
-          }
-          printf '%s\n' "$OUT" | redact
-          sleep 10
-
-          # 5) 断言：容器在跑 + 主题真的进了容器 + 站点活着
-          for c in bolent_wp bolent_wp_mysql; do
-            $RT ps --format '{{.Names}}\t{{.Status}}' | grep -q "^${c}" \
-              || { echo "::error::容器 $c 没在运行"; $RT ps -a --format '{{.Names}}\t{{.Status}}'; exit 1; }
-          done
-          echo "✅ 容器在运行: $($RT ps --format '{{.Names}}' | grep bolent_wp | tr '\n' ' ')"
-          if $RT exec bolent_wp sh -c 'ls /var/www/html/wp-content/themes/' | grep -qx 'bolent-astra-child'; then
-            echo "✅ 子主题已挂进容器"
-          else
-            echo "::warning::子主题没出现在容器里（Run #14 就是这个症状：主题永远到不了 WP）"
-            $RT exec bolent_wp sh -c 'ls /var/www/html/wp-content/themes/'
-          fi
-          CODE=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/ || true)
-          case "$CODE" in
-            200|301|302) echo "✅ WP 上游存活 (:8080 → $CODE)";;
-            *) echo "::error::WP 上游异常 (:8080 → ${CODE:-000})"; exit 1;;
-          esac
-          REMOTE
-
-      # ── 装 nginx + 确保 TLS ────────────────────────────────────
-      # 顺序是硬约束：先 :80 引导态（含 ACME 通道）→ 签证书 → 换正式配置（含 443）。
-      # 反过来做，带 ssl_certificate 的配置在证书缺失时会让 nginx -t 失败，
-      # 一旦 reload/restart 就把 :80 也一起带下去。
-      - name: Apply nginx config & ensure TLS
-        run: |
-          ssh $SSH_OPTS deploy 'bash -s' <<'REMOTE'
-          set -euo pipefail
-          bash "${{ env.OPS_DIR }}/apply-nginx.sh" \
-            --http-only    "${{ env.PORTAL_ROOT }}/nginx/szbolent.http-only.conf" \
-            --full         "${{ env.PORTAL_ROOT }}/nginx/szbolent.conf.new" \
-            --dst          "${{ env.NGINX_DST }}" \
-            --cert-name    "${{ env.TLS_CERT_NAME }}" \
-            --cert-dir     "${{ env.TLS_CERT_DIR }}" \
-            --acme-webroot "${{ env.ACME_WEBROOT }}" \
-            --domains      "${{ env.TLS_DOMAINS }}" \
-            --email        "${{ env.TLS_EMAIL }}"
-          REMOTE
-
-      # ── Page Engine（Rust 后端 :5300）────────────────────────────
-      # 契约里 /v1/menus、/v1/pages、/v1/permissions 的上游，也是门户顶部导航
-      # （Header.vue 的 navItems）唯一数据源。此前从未部署 → /v1/menus 502、
-      # 导航为空。刻意放在 Verify 之前：先补服务再判验收，不允许「判绿之后再补」。
-      #
-      # 现场约定：
-      #   * /opt/page-engine/.env（0600）由一次性初始化脚本生成，含 DATABASE_URL 与
-      #     JWT_SECRET，不进仓库、不进日志（本步骤只打指纹）。
-      #   * 容器加入 szbolent-cn_szbolent-net，用容器名 bolent_wp_mysql 连库，
-      #     不写死 10.89.x.x（容器重建后 IP 会变）。
-      #   * 只发布 127.0.0.1:5300，与契约/nginx 的 proxy_pass 完全对齐。
-      - name: Page Engine — build image & ship
-        if: github.event_name == 'workflow_dispatch' && inputs.deploy_backend
+      - name: Install Tencent nginx config
+        if: github.event_name == 'workflow_dispatch' && inputs.install_nginx_config
         run: |
           set -euo pipefail
-          docker build -t page-engine:latest backend/
-          docker save page-engine:latest | gzip -1 > "$RUNNER_TEMP/page-engine.tgz"
-          ls -lh "$RUNNER_TEMP/page-engine.tgz"
-          scp $SSH_OPTS "$RUNNER_TEMP/page-engine.tgz" deploy:/tmp/page-engine.tgz
-          ssh $SSH_OPTS deploy 'bash -s' <<'REMOTE'
-          set -euo pipefail
-          PE="${{ env.PE_DIR }}"
-          test -s "$PE/.env" || { echo "::error::$PE/.env 缺失（DATABASE_URL / JWT_SECRET）：先执行 Page Engine 生产初始化"; exit 1; }
-          grep -q '^DATABASE_URL=' "$PE/.env" || { echo "::error::$PE/.env 缺少 DATABASE_URL"; exit 1; }
-          grep -q '^JWT_SECRET='   "$PE/.env" || { echo "::error::$PE/.env 缺少 JWT_SECRET";   exit 1; }
-          echo "env 指纹（不回显明文）: $(sha256sum "$PE/.env" | cut -c1-16)"
-
-          LOADED=$(podman load -i /tmp/page-engine.tgz | tail -1)
-          echo "$LOADED"
-          IMG=$(printf '%s' "$LOADED" | sed 's/^Loaded image: //')
-          [ -n "$IMG" ] || IMG=localhost/page-engine:latest
-
-          # 换新镜像：:5300 只有它占有，停机窗口 < 2s（nginx 侧 502 一闪而过）
-          podman rm -f "${{ env.PE_CONTAINER }}" >/dev/null 2>&1 || true
-          podman run -d --name "${{ env.PE_CONTAINER }}" \
-            --restart=always \
-            --network "${{ env.PE_NET }}" \
-            -p 127.0.0.1:5300:5300 \
-            --env-file "$PE/.env" \
-            "$IMG" >/dev/null
-
-          # 机器重启后自恢复：podman 默认不装 restart 单元
-          systemctl enable --now podman-restart.service >/dev/null 2>&1 || \
-            echo "::warning::podman-restart.service 未启用：机器重启后需手动拉起 page-engine"
-
-          # 就绪等待：首次启动要跑 sqlx 迁移（建表 + 种子），给足 60s。
-          # 不 sleep 定长再判：那正是「跑得慢就说绿」的老毛病。
-          READY=0
-          for i in $(seq 1 30); do
-            if curl -fsS -m 3 "http://127.0.0.1:5300/v1/menus?product=szbolent" -o /tmp/pe-menus.json 2>/dev/null; then READY=1; break; fi
-            sleep 2
-          done
-          if [ "$READY" != 1 ]; then
-            echo "::error::Page Engine 未就绪（/v1/menus 不通）。容器状态与日志："
-            podman ps -a --filter "name=${{ env.PE_CONTAINER }}" --format '{{.Names}} {{.Status}} {{.Image}}' || true
-            podman logs --tail 60 "${{ env.PE_CONTAINER }}" || true
+          test -s nginx-tencent-portal.conf || { echo "::error::仓库里没有 nginx-tencent-portal.conf"; exit 1; }
+          if grep -q '47.115.168.107' nginx-tencent-portal.conf || grep -q 'server_name szbolent.cn' nginx-tencent-portal.conf; then
+            echo "::error::nginx 副本指向阿里云或 szbolent.cn，拒绝安装"
             exit 1
           fi
-          echo "✅ /v1/menus 就绪，菜单项 $(grep -o '"title"' /tmp/pe-menus.json | wc -l) 个"
-          head -c 240 /tmp/pe-menus.json; echo
-          podman ps --filter "name=${{ env.PE_CONTAINER }}" --format '{{.Names}} {{.Status}}'
+          rsync -az -e "ssh $SSH_OPTS" nginx-tencent-portal.conf deploy:/tmp/szbolent-portal-tencent.conf
+          ssh $SSH_OPTS deploy 'bash -s' <<REMOTE
+          set -euo pipefail
+          SRC=/tmp/szbolent-portal-tencent.conf
+          DST="${{ env.NGINX_DST }}"
+          sudo cp -p "\$DST" "\${DST}.bak.\$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
+          sudo cp "\$SRC" "\$DST"
+          sudo ln -sfn "\$DST" /etc/nginx/sites-enabled/szbolent-portal-tencent
+          sudo nginx -t
+          sudo systemctl reload nginx
+          echo "腾讯云 nginx 已安装 \$DST"
           REMOTE
 
-      # ── 验收：这是「上线成功」的唯一判据 ───────────────────────
-      # 断言集见 scripts/verify-prod.sh。任何一条不过，本步骤直接红。
-      - name: Verify (hard assertions)
+      - name: Verify showcase homepage
         run: |
           set -euo pipefail
-          EXTRA=""
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then EXTRA="--public"; fi
-          ssh $SSH_OPTS deploy "bash ${{ env.OPS_DIR }}/verify-prod.sh $EXTRA"
-
-      # ── 用户可见层验收：真实浏览器渲染顶部导航 ──────────────────
-      # Verify 断言的是服务端链路。curl 门户 /v1/menus 拿 200、验收全绿，
-      # 仍可能因为前端 base 跨域（api.genz.ltd 的 /v1/menus 是 404）而导航为空 ——
-      # 2026-09-28 实测过这种「指标绿、用户看不到」。这条用真 chromium 收口。
-      - name: Verify user-visible nav (headless chromium)
-        run: |
-          set -euo pipefail
-          npx playwright install --with-deps chromium
-          npm run verify:nav
-
-      # ── 交付凭据：排障时不用再翻日志猜「到底上的哪一版」 ─────────
-      - name: Deployment receipt
-        if: always()
-        run: |
-          ssh $SSH_OPTS deploy 'bash -s' <<'REMOTE' || true
-          echo "REV  : ${{ github.sha }}"
-          echo "RUN  : #${{ github.run_number }} (${{ github.event_name }})"
-          D="${{ env.PORTAL_DIST }}"
-          if [ -s "$D/index.html" ]; then
-            echo "DIST : $(sha256sum "$D/index.html" | cut -c1-16)  $(stat -c '%y' "$D/index.html" | cut -c1-19)"
-          else
-            echo "DIST : (缺失)"
-          fi
-          echo "CONF : $(sha256sum ${{ env.NGINX_DST }} 2>/dev/null | cut -c1-16)  $(ls -l ${{ env.NGINX_DST }} 2>/dev/null | awk '{print $6,$7,$8}')"
-          if [ -s "${{ env.TLS_CERT_DIR }}/fullchain.pem" ]; then
-            echo "CERT : $(openssl x509 -in "${{ env.TLS_CERT_DIR }}/fullchain.pem" -noout -enddate | cut -d= -f2)"
-          fi
-          echo "443  : $(ss -ltn 2>/dev/null | grep -cE ':443\b') listener(s)"
-          PE=$(podman ps --filter name=${{ env.PE_CONTAINER }} --format '{{.Status}}' 2>/dev/null | head -1)
-          echo "PE   : ${PE:-(未部署)}  menus=$(curl -fsS -m 3 'http://127.0.0.1:5300/v1/menus?product=szbolent' 2>/dev/null | grep -o '"title"' | wc -l)"
-          REMOTE
+          code=$(curl -sS -o /tmp/portal.html -w '%{http_code}' --max-time 20 "${{ env.SITE_URL }}")
+          echo "GET ${{ env.SITE_URL }} → $code"
+          test "$code" = "200" || { echo "::error::橱窗首页不是 200"; exit 1; }
+          grep -q 'id="app"' /tmp/portal.html || { echo "::error::橱窗首页不是门户 SPA"; exit 1; }
