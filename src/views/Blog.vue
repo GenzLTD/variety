@@ -3,9 +3,9 @@
     <!-- Hero Section -->
     <section class="page-hero">
       <div class="container">
-        <h1 data-aos="fade-up">博客</h1>
+        <h1 data-aos="fade-up">书店</h1>
         <p data-aos="fade-up" data-aos-delay="100">
-          书架精选：聚合作者博客的优质文章，阅读全文跳转原文
+          节选陈列：只展示摘要，阅读全文跳转原文
         </p>
       </div>
     </section>
@@ -22,7 +22,7 @@
         <!-- 错误 / 降级空态 -->
         <div v-else-if="error" class="error-state">
           <p>📭 {{ error }}</p>
-          <p class="error-hint">书架内容由作者博客（bolent-shelf-bridge）提供；服务恢复后即可正常浏览。</p>
+          <p class="error-hint">节选来自书店 bookstore/v1/feed；服务恢复后即可正常浏览。</p>
           <button @click="loadFeed" class="btn btn-primary">重试</button>
         </div>
 
@@ -34,31 +34,17 @@
             class="post-card"
             data-aos="fade-up"
           >
-            <!-- 封面图 -->
             <div class="post-thumbnail">
-              <img
-                v-if="item.cover"
-                :src="item.cover"
-                :alt="item.title"
-                loading="lazy"
-              />
-              <div v-else class="thumbnail-placeholder">
+              <div class="thumbnail-placeholder">
                 📝
               </div>
             </div>
 
             <!-- 文章内容 -->
             <div class="post-content">
-              <div class="post-meta">
-                <span class="post-date">{{ formatDate(item.published) }}</span>
-                <span v-if="item.categories.length" class="post-categories">
-                  <span
-                    v-for="cat in item.categories"
-                    :key="cat.slug"
-                    class="category-tag"
-                  >
-                    {{ cat.name }}
-                  </span>
+              <div v-if="item.genre" class="post-meta">
+                <span class="post-categories">
+                  <span class="category-tag">{{ item.genre }}</span>
                 </span>
               </div>
 
@@ -74,16 +60,6 @@
                 <a :href="item.url" target="_blank" rel="noopener noreferrer" class="read-more">
                   阅读原文 →
                 </a>
-
-                <div v-if="item.author.name" class="post-author">
-                  <img
-                    v-if="item.author.avatar"
-                    :src="item.author.avatar"
-                    :alt="item.author.name"
-                    class="author-avatar"
-                  />
-                  <span>{{ item.author.name }}</span>
-                </div>
               </div>
             </div>
           </article>
@@ -94,89 +70,26 @@
           <p>📭 暂无文章</p>
         </div>
 
-        <!-- 分页 -->
-        <div v-if="totalPages > 1" class="pagination">
-          <button
-            @click="goToPage(currentPage - 1)"
-            :disabled="currentPage === 1"
-            class="btn btn-outline"
-          >
-            ← 上一页
-          </button>
-
-          <div class="page-numbers">
-            <button
-              v-for="page in visiblePages"
-              :key="page"
-              @click="goToPage(page)"
-              :class="['page-btn', { active: page === currentPage }]"
-            >
-              {{ page }}
-            </button>
-          </div>
-
-          <button
-            @click="goToPage(currentPage + 1)"
-            :disabled="currentPage === totalPages"
-            class="btn btn-outline"
-          >
-            下一页 →
-          </button>
-        </div>
       </div>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { getShelfFeed, formatDate, type ShelfFeedItem } from '@/api/wordpress'
+import { ref, onMounted } from 'vue'
+import { getShelfFeed, type ShelfFeedItem } from '@/api/wordpress'
 
-const route = useRoute()
-
-// 数据
 const items = ref<ShelfFeedItem[]>([])
 const loading = ref(false)
 const error = ref('')
 
-// 分页
-const currentPage = ref(1)
-const totalPages = ref(0)
-const perPage = 9
-
-// 计算可见的页码
-const visiblePages = computed(() => {
-  const pages: number[] = []
-  const maxVisible = 5
-  let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
-  let end = Math.min(totalPages.value, start + maxVisible - 1)
-
-  if (end - start < maxVisible - 1) {
-    start = Math.max(1, end - maxVisible + 1)
-  }
-
-  for (let i = start; i <= end; i++) {
-    pages.push(i)
-  }
-
-  return pages
-})
-
-// 加载书架 feed
 const loadFeed = async () => {
   loading.value = true
   error.value = ''
 
   try {
-    const result = await getShelfFeed({
-      page: currentPage.value,
-      limit: perPage,
-    })
-
+    const result = await getShelfFeed({ limit: 50 })
     items.value = result.items
-    const limit = Math.max(1, result.limit || perPage)
-    totalPages.value = Math.max(1, Math.ceil(result.total / limit))
   } catch (err: any) {
     const msg = String(err?.message || '')
     if (/Failed to fetch|NetworkError|ECONNREFUSED|500|502|503|504/i.test(msg)) {
@@ -184,38 +97,13 @@ const loadFeed = async () => {
     } else {
       error.value = msg || '加载失败，请稍后重试'
     }
-    console.error('加载书架失败:', err)
+    console.error('加载书店节选失败:', err)
   } finally {
     loading.value = false
   }
 }
 
-// 翻页
-const goToPage = (page: number) => {
-  if (page < 1 || page > totalPages.value) return
-  currentPage.value = page
-  loadFeed()
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-// 监听路由变化
-watch(() => route.query, () => {
-  if (route.name === 'blog') {
-    const page = parseInt(route.query.page as string) || 1
-    if (page !== currentPage.value) {
-      currentPage.value = page
-      loadFeed()
-    }
-  }
-})
-
-// 初始化
 onMounted(() => {
-  const pageQuery = route.query.page
-  if (pageQuery) {
-    currentPage.value = parseInt(pageQuery as string)
-  }
-
   loadFeed()
 })
 </script>
@@ -429,6 +317,7 @@ onMounted(() => {
           color: var(--text-secondary);
           line-height: 1.6;
           margin-bottom: 16px;
+          white-space: pre-line;
         }
 
         .post-footer {
@@ -465,45 +354,6 @@ onMounted(() => {
       }
     }
 
-    .pagination {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      margin-top: 60px;
-
-      .page-numbers {
-        display: flex;
-        gap: 8px;
-      }
-
-      .page-btn {
-        min-width: 40px;
-        height: 40px;
-        padding: 8px 12px;
-        border: 2px solid var(--bolent-border);
-        background: white;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: var(--bolent-transition);
-
-        &:hover:not(.active) {
-          border-color: var(--primary-color);
-          color: var(--primary-color);
-        }
-
-        &.active {
-          background: var(--primary-color);
-          border-color: var(--primary-color);
-          color: white;
-        }
-      }
-
-      .btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-    }
   }
 }
 

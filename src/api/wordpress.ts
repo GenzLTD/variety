@@ -307,95 +307,76 @@ export function sanitizeHTML(html: string): string {
 }
 
 /**
- * ─────────────────────────────────────────────────────────────
- * 书架 feed（bolent-shelf-bridge/1）
- * 职责：只读聚合作者博客（szbolent.cn）的优质篇，卡片跳转 items[].url 回原文。
- * 协议：SHELF_BRIDGE_PROTOCOL.md §2–§3（/feed 返回 JSON，字段见下方类型）。
- * ─────────────────────────────────────────────────────────────
+ * 书店 feed（szbolent.cn `bookstore/v1`）
+ * 只取节选：id / title / genre / excerpt（诗句数组）/ url。
+ * 卡片跳转 url 回原文，不请求 `/poem/<id>` 全文。
  */
 
-const SHELF_API_BASE = import.meta.env.VITE_SHELF_API_BASE || 'https://szbolent.cn/wp-json/bolent-shelf/v1'
-
-export interface ShelfFeedAuthor {
-  name: string
-  avatar: string | null
-  bio?: string
-}
-
-export interface ShelfFeedTerm {
-  name: string
-  slug: string
-}
+const SHELF_API_BASE = import.meta.env.VITE_SHELF_API_BASE || 'https://szbolent.cn/wp-json/bookstore/v1'
 
 export interface ShelfFeedItem {
-  id: number
-  slug: string
+  id: string
   title: string
+  genre: string
   excerpt: string
   url: string
-  cover: string | null
-  published: string
-  modified: string
-  author: ShelfFeedAuthor
-  categories: ShelfFeedTerm[]
-  tags: ShelfFeedTerm[]
-  word_count: number
-  reading_minutes: number
-  lang: string
+}
+
+interface BookstoreFeedRawItem {
+  id?: string
+  title?: string
+  genre?: string
+  excerpt?: string[] | string
+  url?: string
 }
 
 export interface ShelfFeedResponse {
-  protocol: string
-  generated_at: string
-  site: {
-    name: string
-    url: string
-    description: string
-    lang: string
-    icon: string | null
-    author: ShelfFeedAuthor
-  }
   count: number
-  total: number
-  page: number
-  limit: number
   items: ShelfFeedItem[]
-  license: { type: string; url: string }
-  feed_url: string
-  rss_url: string
-  badge?: { text: string; html: string }
 }
 
 export interface ShelfFeedQuery {
-  page?: number
+  /** 书店 feed 只接受 limit（1–200），没有页码。 */
   limit?: number
-  category?: string
-  tag?: string
+}
+
+function joinPoemExcerpt(excerpt: string[] | string | undefined): string {
+  if (Array.isArray(excerpt)) return excerpt.map(line => line.trim()).filter(Boolean).join('\n')
+  return (excerpt || '').trim()
 }
 
 /**
- * 拉取书架 feed（JSON）。
+ * 拉取书店节选 feed，并收成橱窗卡片。
  */
 export async function getShelfFeed(query: ShelfFeedQuery = {}): Promise<ShelfFeedResponse> {
-  const params = new URLSearchParams()
-  if (query.page) params.append('page', String(query.page))
-  if (query.limit) params.append('limit', String(query.limit))
-  if (query.category) params.append('category', query.category)
-  if (query.tag) params.append('tag', query.tag)
-
-  const qs = params.toString()
-  const url = `${SHELF_API_BASE}/feed${qs ? `?${qs}` : ''}`
+  const limit = Math.min(200, Math.max(1, query.limit ?? 50))
+  const url = `${SHELF_API_BASE}/feed?limit=${limit}`
 
   try {
     const response = await fetch(url)
 
     if (!response.ok) {
-      throw new Error(`书架 feed 错误: ${response.status}`)
+      throw new Error(`书店 feed 错误: ${response.status}`)
     }
 
-    return fixWordPressEncoding(await response.json())
+    const raw = fixWordPressEncoding(await response.json()) as {
+      count?: number
+      items?: BookstoreFeedRawItem[]
+    }
+    const items = (raw.items || [])
+      .filter((item): item is BookstoreFeedRawItem & { url: string; title: string } =>
+        Boolean(item?.url && item?.title))
+      .map(item => ({
+        id: String(item.id || item.url),
+        title: item.title,
+        genre: item.genre || '',
+        excerpt: joinPoemExcerpt(item.excerpt),
+        url: item.url,
+      }))
+
+    return { count: raw.count ?? items.length, items }
   } catch (error) {
-    console.error('获取书架 feed 失败:', error)
+    console.error('获取书店 feed 失败:', error)
     throw error
   }
 }

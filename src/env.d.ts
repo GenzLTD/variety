@@ -7,7 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_LOOMA_API_BASE: string
   /** WordPress REST API 地址 */
   readonly VITE_BLOG_API_BASE: string
-  /** 书架 feed 基址（bolent-shelf-bridge/1，作者博客 szbolent.cn） */
+  /** 书店 feed 基址（szbolent.cn bookstore/v1，只含节选） */
   readonly VITE_SHELF_API_BASE: string
 }
 
