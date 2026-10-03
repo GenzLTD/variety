@@ -4,7 +4,7 @@
       <div class="header-wrapper">
         <!-- Logo -->
         <router-link to="/" class="logo">
-          <img src="/bolent-logo.svg" alt="Bolent" class="logo-img" />
+          <img src="/bolent-logo.svg" alt="深伯乐" class="logo-img" />
         </router-link>
 
         <!-- 桌面导航 — 数据源：Page Engine :5300 GET /v1/menus?product=szbolent -->
@@ -75,11 +75,35 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDynamicRouter } from '@/composables/useDynamicRouter'
+import type { MenuItem } from '@/api/page-engine.types'
 
-// ── Page Engine 动态菜单 ──
+// ── Page Engine 动态菜单；书店栏目在菜单缺失时仍然挂上 ──
 const { menus, loadMenus } = useDynamicRouter()
 
-const navItems = computed(() => menus.value)
+const shelfNav: MenuItem = {
+  id: 0,
+  parentId: null,
+  title: '书店',
+  path: '/blog',
+  visibleTo: 'public',
+  sortOrder: 0,
+  product: 'szbolent',
+}
+
+function includesShelf(items: MenuItem[]): boolean {
+  return items.some(
+    (item) =>
+      item.path === '/blog' ||
+      item.path === 'blog' ||
+      item.title === '书店' ||
+      (item.children ? includesShelf(item.children) : false)
+  )
+}
+
+const navItems = computed(() => {
+  const items = menus.value
+  return includesShelf(items) ? items : [shelfNav, ...items]
+})
 
 // ── 滚动 & 移动端状态 ──
 const isScrolled = ref(false)

@@ -10,6 +10,32 @@
       </div>
     </section>
 
+    <!-- 栏目：词 / 诗，来自书店 feed 的 genre -->
+    <section v-if="genres.length" class="blog-filters">
+      <div class="container">
+        <div class="category-filter">
+          <button
+            type="button"
+            class="filter-btn"
+            :class="{ active: activeGenre === '' }"
+            @click="activeGenre = ''"
+          >
+            全部
+          </button>
+          <button
+            v-for="genre in genres"
+            :key="genre"
+            type="button"
+            class="filter-btn"
+            :class="{ active: activeGenre === genre }"
+            @click="activeGenre = genre"
+          >
+            {{ genre }}
+          </button>
+        </div>
+      </div>
+    </section>
+
     <!-- 文章列表（书架 feed） -->
     <section class="blog-list section">
       <div class="container">
@@ -27,9 +53,9 @@
         </div>
 
         <!-- 文章列表 -->
-        <div v-else-if="items.length" class="posts-grid">
+        <div v-else-if="visibleItems.length" class="posts-grid">
           <article
-            v-for="item in items"
+            v-for="item in visibleItems"
             :key="item.id"
             class="post-card"
             data-aos="fade-up"
@@ -76,19 +102,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { getShelfFeed, type ShelfFeedItem } from '@/api/wordpress'
 
 const items = ref<ShelfFeedItem[]>([])
 const loading = ref(false)
 const error = ref('')
+const activeGenre = ref('')
+
+const genres = computed(() =>
+  [...new Set(items.value.map((item) => item.genre).filter(Boolean))]
+)
+
+const visibleItems = computed(() =>
+  activeGenre.value
+    ? items.value.filter((item) => item.genre === activeGenre.value)
+    : items.value
+)
 
 const loadFeed = async () => {
   loading.value = true
   error.value = ''
 
   try {
-    const result = await getShelfFeed({ limit: 50 })
+    const result = await getShelfFeed({ limit: 200 })
     items.value = result.items
   } catch (err: any) {
     const msg = String(err?.message || '')

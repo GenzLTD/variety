@@ -14,3 +14,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+/** 构建时写入的发布 tag，供页脚注脚核对和回滚。 */
+declare const __RELEASE_TAG__: string

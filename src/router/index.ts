@@ -43,7 +43,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ServiceDetail.vue'),
         meta: { title: '服务详情' }
       },
-      // blog 列表可由 Page Engine 动态注入；详情带 :slug，静态兜底（菜单通常不挂参数路由）
+      // 书店列表是橱窗自己的页面，不依赖 Page Engine 菜单
+      {
+        path: 'blog',
+        name: 'Blog',
+        component: () => import('@/views/Blog.vue'),
+        meta: { title: '书店' }
+      },
       {
         path: 'blog/:slug',
         name: 'BlogDetail',

@@ -7,7 +7,7 @@
           <div class="footer-col">
             <div class="footer-logo">
               <router-link to="/" class="logo-link">
-                <img src="/bolent-logo-white.svg" alt="Bolent" class="logo-img" />
+                <img src="/bolent-logo-white.svg" alt="深伯乐" class="logo-img" />
               </router-link>
             </div>
             <p class="footer-desc">
@@ -66,12 +66,13 @@
     <div class="footer-bottom">
       <div class="container">
         <div class="footer-bottom-content">
-          <p>&copy; {{ currentYear }} 深圳伯乐特科技有限公司 | <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">粤ICP备2024000000号</a></p>
+          <p>&copy; {{ currentYear }} {{ companyInfo.fullName }} | <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">{{ companyInfo.icp }}</a></p>
           <div class="footer-bottom-links">
             <router-link to="/privacy">隐私政策</router-link>
             <router-link to="/terms">服务条款</router-link>
           </div>
         </div>
+        <p class="release-note">tag {{ releaseTag }}</p>
       </div>
     </div>
   </footer>
@@ -81,6 +82,7 @@
 import { computed, onMounted } from 'vue'
 import { Github, MapPin, Mail } from 'lucide-vue-next'
 import { useDynamicRouter } from '@/composables/useDynamicRouter'
+import { companyInfo } from '@/config/company'
 
 const { menus, loadMenus } = useDynamicRouter()
 
@@ -101,6 +103,7 @@ onMounted(() => {
 })
 
 const currentYear = computed(() => new Date().getFullYear())
+const releaseTag = __RELEASE_TAG__
 </script>
 
 <style scoped lang="scss">
@@ -225,6 +228,14 @@ const currentYear = computed(() => new Date().getFullYear())
   .footer-bottom {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding: 24px 0;
+
+    .release-note {
+      margin: 10px 0 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      color: rgba(255, 255, 255, 0.45);
+    }
 
     .footer-bottom-content {
       display: flex;

@@ -1,5 +1,5 @@
 <svg width="240" height="64" viewBox="0 0 240 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Bolent Logo · 主版本
+  <!-- 深伯乐 Logo · 主版本
        图形：融合数据节点（左）与书卷/竹简意象（右），墨青为主，琥珀金点缀
        安全间距：图形四周预留 ≥16px clear space
        最小尺寸：宽 120px（数字宽度约 0.5x） -->
@@ -15,7 +15,7 @@
       <!-- 底部连线，象征连接 -->
       <path d="M6 38 L30 38" stroke="#0E6E6A" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
     </g>
-    <!-- 文字标 · Bolent -->
-    <text x="56" y="42" font-family="Manrope, -apple-system, sans-serif" font-size="28" font-weight="700" fill="#1A1F1E" letter-spacing="-0.5">Bolent</text>
+    <!-- 文字标 · 深伯乐 -->
+    <text x="56" y="42" font-family="'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="26" font-weight="700" fill="#1A1F1E">深伯乐</text>
   </g>
 </svg>

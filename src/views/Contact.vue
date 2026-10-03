@@ -152,7 +152,7 @@
       <div class="map-placeholder">
         <div class="map-overlay">
           <div class="map-info">
-            <h3>📍 Bolent 深圳总部</h3>
+            <h3>📍 深伯乐深圳总部</h3>
             <p>深圳市南山区科技园南区</p>
           </div>
         </div>

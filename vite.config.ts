@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { execSync } from 'node:child_process';
 import { fileURLToPath, URL } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
@@ -55,6 +56,41 @@ function buildProxy(): Record<string, { target: string; changeOrigin: boolean }>
 }
 
 /**
+ * 页脚注脚用的发布 tag。
+ * CI 打 v* tag 时用 GITHUB_REF_NAME，线上看到的字就是回滚要用的 tag。
+ * 本地不在 tag 上，或工作区有未提交改动，会带上 sha / +dirty，避免当成可回滚版本。
+ */
+function resolveReleaseTag(): string {
+  const ciTag = process.env.GITHUB_REF_TYPE === 'tag' ? process.env.GITHUB_REF_NAME : '';
+  if (ciTag) return ciTag;
+
+  const git = (command: string): string =>
+    execSync(command, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+
+  let tag = '';
+  let sha = 'unknown';
+  let dirty = false;
+  try {
+    tag = git('git describe --tags --exact-match HEAD');
+  } catch {
+    tag = '';
+  }
+  try {
+    sha = git('git rev-parse --short HEAD');
+  } catch {
+    sha = 'unknown';
+  }
+  try {
+    dirty = git('git status --porcelain').length > 0;
+  } catch {
+    dirty = false;
+  }
+
+  if (tag) return dirty ? `${tag}+dirty` : tag;
+  return dirty ? `untagged@${sha}+dirty` : `untagged@${sha}`;
+}
+
+/**
  * 契约 → 开发端口。
  * env 出口：成员本机 3000 被占用时，设 VITE_DEV_PORT=3xxx 即可，
  * 不必改共享契约（改契约会进 diff、影响所有人），这是「适配度」的收敛点。
@@ -72,6 +108,9 @@ function resolveDevPort(dev: EntryContract['dev']): number {
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
   base: process.env.VITE_BASE_PATH || '/',
+  define: {
+    __RELEASE_TAG__: JSON.stringify(resolveReleaseTag()),
+  },
   plugins: [vue(),
   // 自动导入 Vue 相关函数
   AutoImport({

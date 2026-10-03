@@ -28,6 +28,9 @@
               <Zap :size="18" />
               查看案例
             </router-link>
+            <router-link to="/blog" class="btn btn-outline-light btn-large">
+              书店
+            </router-link>
             <router-link to="/contact" class="btn btn-outline-light btn-large">
               联系我们
             </router-link>
@@ -149,7 +152,7 @@
     <section class="features-section section">
       <div class="container">
         <div class="section-header-center" data-aos="fade-up">
-          <span class="section-tag">WHY BOLENT</span>
+          <span class="section-tag">深伯乐</span>
           <h2 class="section-heading">为什么选择我们</h2>
           <p class="section-lead">不只是外包，我们是您值得信赖的技术合伙人</p>
         </div>

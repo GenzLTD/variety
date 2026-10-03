@@ -96,7 +96,7 @@
     <section class="why-choose-section section" style="background: var(--bolent-bg-soft);">
       <div class="container">
         <div class="section-header">
-          <h2 data-aos="fade-up">为什么选择 Bolent？</h2>
+          <h2 data-aos="fade-up">为什么选择 深伯乐？</h2>
           <p data-aos="fade-up" data-aos-delay="100">我们的核心优势</p>
         </div>
         <div class="advantages-grid">
@@ -376,17 +376,17 @@ const featuredCases = [
 // 客户评价
 const testimonials = [
   {
-    content: 'Bolent 团队非常专业，从需求分析到项目交付，每个环节都做得很到位。他们的敏捷开发流程让我们的产品能够快速上线，并且根据市场反馈及时调整。',
+    content: '深伯乐团队非常专业，从需求分析到项目交付，每个环节都做得很到位。他们的敏捷开发流程让我们的产品能够快速上线，并且根据市场反馈及时调整。',
     author: '张总',
     role: '某互联网公司 CTO'
   },
   {
-    content: '我们与 Bolent 合作了多个项目，他们的技术实力和服务态度都让人印象深刻。特别是在项目管理方面，能够有效控制进度和质量，是值得信赖的合作伙伴。',
+    content: '我们与深伯乐合作了多个项目，他们的技术实力和服务态度都让人印象深刻。特别是在项目管理方面，能够有效控制进度和质量，是值得信赖的合作伙伴。',
     author: '李经理',
     role: '某金融科技公司 项目总监'
   },
   {
-    content: '选择 Bolent 是我们做出的正确决定。他们不仅帮助我们完成了系统重构，还提供了很多有价值的技术建议，帮助我们的团队提升了技术能力。',
+    content: '选择深伯乐是我们做出的正确决定。他们不仅帮助我们完成了系统重构，还提供了很多有价值的技术建议，帮助我们的团队提升了技术能力。',
     author: '王女士',
     role: '某电商平台 技术负责人'
   }

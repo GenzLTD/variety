@@ -11,7 +11,7 @@
       <h2>内容暂不可用</h2>
       <p>{{ error }}</p>
       <p class="error-hint">博客由 WordPress 提供；若持续失败请检查本地 :8800 与 MySQL 容器。</p>
-      <router-link to="/blog" class="btn btn-primary">返回博客列表</router-link>
+      <router-link to="/blog" class="btn btn-primary">返回书店</router-link>
     </div>
 
     <!-- 文章内容 -->
@@ -22,7 +22,7 @@
           <div class="breadcrumb">
             <router-link to="/">首页</router-link>
             <span>/</span>
-            <router-link to="/blog">博客</router-link>
+            <router-link to="/blog">书店</router-link>
             <span>/</span>
             <span>{{ post.title.rendered }}</span>
           </div>

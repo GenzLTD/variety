@@ -254,7 +254,7 @@ watch(
             <LogIn :size="48" />
           </div>
           <h4 class="chat-login__title">登录后使用 AI 诗词助手</h4>
-          <p class="chat-login__desc">用您的 Bolent 账号登录，即可向 AI 提问诗词相关问题</p>
+          <p class="chat-login__desc">用您的深伯乐账号登录，即可向 AI 提问诗词相关问题</p>
 
           <form class="chat-login__form" @submit.prevent="handleLogin">
             <div class="chat-login__field">

@@ -28,7 +28,7 @@
     <section class="why-join-section section">
       <div class="container">
         <div class="section-header">
-          <h2 data-aos="fade-up">为什么选择 Bolent？</h2>
+          <h2 data-aos="fade-up">为什么选择 深伯乐？</h2>
           <p data-aos="fade-up" data-aos-delay="100">我们提供的不仅是一份工作，更是一个成长的平台</p>
         </div>
         <div class="benefits-grid">
