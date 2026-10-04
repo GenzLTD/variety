@@ -145,3 +145,29 @@ jobs:
           echo "GET ${{ env.SITE_URL }} → $code"
           test "$code" = "200" || { echo "::error::橱窗首页不是 200"; exit 1; }
           grep -q 'id="app"' /tmp/portal.html || { echo "::error::橱窗首页不是门户 SPA"; exit 1; }
+
+      # 上面那一步只看状态码：200 + 有挂载点就算过 —— 这正是前两次假绿的口子
+      # （导航空、书店降级成「暂无文章」，页面照样 200）。这一步改成真开浏览器：
+      #   verify:nav  门户顶部导航必须渲染出预期菜单项（/v1/menus 通、菜单真的接上）
+      #   verify:book 书店栏目必须渲染出卡片，且标题能在 feed 里对上（不是写死假数据）
+      # 不要加 continue-on-error：这里红了说明用户真的看不到东西，就要它挡住发版。
+      - name: Verify showcase in a real browser (nav + bookstore)
+        env:
+          # 门户 canonical 是 szbolent.com.cn；SITE_URL 那个 www 别名保持不变以免影响上面的旧步骤
+          VERIFY_SITE: https://szbolent.com.cn/
+        run: |
+          set -euo pipefail
+          npx playwright install --with-deps chromium || npx playwright install chromium
+          export SITE_URL="$VERIFY_SITE"
+          for script in verify:nav verify:book; do
+            if npm run "$script"; then
+              echo "::notice::$script 通过"
+              continue
+            fi
+            echo "::warning::$script 首轮没过，20s 后重试一次（刚切换静态产物的抖动留给第二次机会）"
+            sleep 20
+            npm run "$script" || {
+              echo "::error::用户可见层验收失败：$script —— 这是真实的用户可见故障，不是 CI 抖动"
+              exit 1
+            }
+          done
