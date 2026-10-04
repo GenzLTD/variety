@@ -1,0 +1,132 @@
+name: Inspect Tencent portal nginx (read-only)
+
+# =============================================================
+# 只读勘察：诊断门户 https://szbolent.com.cn/v1/menus?product=szbolent 返回 404。
+#
+# 现状：门户 SPA 起得来、书店栏目也正常，但顶部导航只剩静态「书店」——
+# 浏览器报 [DynamicRouter] Failed to load menus: 404。
+# 要分清三种可能，得看机器上的实况：
+#   ① nginx 根本没有 /v1/ 这条 location（没转发）；
+#   ② 有 location，但 upstream 指向的后端没在听（转发了，后端没了）；
+#   ③ 后端在听，但这个接口在它上面就是 404（后端没这个路由）。
+# 这三者在公网侧的观测完全一样——都是 404——只能上机分。
+#
+# 只做读：
+#   - 不写任何文件（除 curl 的临时响应体）、不改配置、不 reload/restart nginx、
+#     不发布产物、不装包；
+#   - 只用 sudo 做「读」：nginx -T、ls、ss、curl。
+#
+# 触发：只有 workflow_dispatch。没有 push，也没有 tag——
+# 合并进 main 之后不会自己跑，要人工点。
+#
+# 范围：只碰腾讯云门户机 1.14.202.161。阿里云书店机（47.115.168.107）
+# 由护栏显式拒绝；书店侧的对照勘察以后放 szbolent-cn（那边才有自托管 runner
+# 和 DEPLOY_HOST，variety 用不上也不该碰）。
+#
+# 日志：输出全部留在 Actions 运行日志里（本仓 PRIVATE）。
+# nginx -T 会带出内部 upstream、路径、证书位置——不要往 PR 里贴。
+# =============================================================
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: inspect-tencent-portal-nginx
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SSH_OPTS: '-o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o BatchMode=yes -o StrictHostKeyChecking=no'
+  # 写死。不要从别处回落到 47.115.168.107。
+  DEPLOY_HOST: 1.14.202.161
+  DEPLOY_USER: ubuntu
+  FORBIDDEN_HOST: 47.115.168.107
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Refuse Aliyun bookstore host
+        run: |
+          set -euo pipefail
+          if [ "${{ env.DEPLOY_HOST }}" = "${{ env.FORBIDDEN_HOST }}" ]; then
+            echo "::error::拒绝勘察阿里云 ${{ env.FORBIDDEN_HOST }}（szbolent.cn 书店，不归本仓管）"
+            exit 1
+          fi
+          case "${{ env.DEPLOY_HOST }}" in
+            47.115.*)
+              echo "::error::拒绝勘察阿里云网段 ${{ env.DEPLOY_HOST }}"
+              exit 1
+              ;;
+          esac
+          echo "勘察目标: ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} （腾讯云门户，只读）"
+
+      - name: Setup SSH
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+          config: |
+            Host deploy
+              HostName ${{ env.DEPLOY_HOST }}
+              User ${{ env.DEPLOY_USER }}
+
+      - name: Read-only inspection
+        run: |
+          ssh $SSH_OPTS deploy 'bash -s' <<'REMOTE'
+          set -uo pipefail
+          # 全程只读：没有写文件、没有改配置、没有 reload/restart。
+
+          echo "========== 0. 机器与时间 =========="
+          hostname
+          date -u '+%Y-%m-%d %H:%M:%SZ'
+          uname -a
+          echo
+
+          echo "========== 1. nginx 版本 =========="
+          sudo nginx -v 2>&1 || echo "（nginx 不在 PATH 或 sudo 不可用）"
+          echo
+
+          echo "========== 2. 生效配置 nginx -T =========="
+          echo "（重点看：server_name、location /v1/、proxy_pass、root、try_files）"
+          sudo nginx -T 2>&1 || echo "（nginx -T 失败：权限或配置语法错误）"
+          echo
+
+          echo "========== 3. 站点配置目录 =========="
+          echo "--- /etc/nginx/sites-enabled/ ---"
+          sudo ls -la /etc/nginx/sites-enabled/ 2>&1 || echo "（目录不存在或不可读）"
+          echo "--- /etc/nginx/conf.d/ ---"
+          sudo ls -la /etc/nginx/conf.d/ 2>&1 || echo "（目录不存在或不可读）"
+          echo "--- /etc/nginx/sites-available/ ---"
+          sudo ls -la /etc/nginx/sites-available/ 2>&1 || echo "（目录不存在或不可读）"
+          echo
+
+          echo "========== 4. 监听端口（后端在不在听） =========="
+          sudo ss -ltnp 2>/dev/null || sudo netstat -ltnp 2>/dev/null || echo "（ss / netstat 都不可用）"
+          echo
+
+          echo "========== 5. 本机 menus 接口 =========="
+          echo "GET http://127.0.0.1:5300/v1/menus?product=szbolent"
+          code=$(curl -sS -m 10 -o /tmp/menus_probe.json -w '%{http_code}' 'http://127.0.0.1:5300/v1/menus?product=szbolent' 2>/dev/null || echo "000")
+          echo "HTTP $code"
+          echo "--- 响应体前 800 字节 ---"
+          head -c 800 /tmp/menus_probe.json 2>/dev/null || true
+          echo
+          echo
+
+          echo "========== 6. 门户产物（确认发的是哪一版） =========="
+          sudo ls -la /var/www/szbolent-portal/ 2>&1 || echo "（目录不存在）"
+          echo "--- dist/index.html 的 title ---"
+          sudo grep -o '<title>[^<]*</title>' /var/www/szbolent-portal/dist/index.html 2>/dev/null || true
+          echo
+
+          echo "========== 勘察结束（未做任何写操作） =========="
+          REMOTE
+
+      - name: Reminder
+        run: |
+          echo "::notice::以上输出含机器上的内部配置（upstream、路径、证书位置）。留在 Actions 日志里即可，不要贴进 PR 或聊天窗口。"
