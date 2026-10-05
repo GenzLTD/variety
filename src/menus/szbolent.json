@@ -1,0 +1,87 @@
+{
+  "$comment": "烘焙菜单 —— 由 scripts/gen-menus.mjs 从 backend/migrations/00{2,3}*.sql 导出，禁止手改。改菜单请改种子后重跑脚本，或走 PR 说明。",
+  "product": "szbolent",
+  "source": [
+    "backend/migrations/002_seed.sql",
+    "backend/migrations/003_seed_extended.sql"
+  ],
+  "items": [
+    {
+      "id": 1,
+      "parentId": null,
+      "title": "首页",
+      "path": "/",
+      "icon": "home",
+      "component": "Home",
+      "product": "szbolent",
+      "visibleTo": "public",
+      "sortOrder": 0
+    },
+    {
+      "id": 2,
+      "parentId": null,
+      "title": "服务",
+      "path": "/services",
+      "icon": "grid",
+      "component": "Services",
+      "product": "szbolent",
+      "visibleTo": "public",
+      "sortOrder": 1
+    },
+    {
+      "id": 3,
+      "parentId": null,
+      "title": "案例",
+      "path": "/case-study",
+      "icon": "folder",
+      "component": "CaseStudy",
+      "product": "szbolent",
+      "visibleTo": "public",
+      "sortOrder": 2
+    },
+    {
+      "id": 4,
+      "parentId": null,
+      "title": "关于",
+      "path": "/about",
+      "icon": "info",
+      "component": "About",
+      "product": "szbolent",
+      "visibleTo": "public",
+      "sortOrder": 3
+    },
+    {
+      "id": 5,
+      "parentId": null,
+      "title": "联系",
+      "path": "/contact",
+      "icon": "mail",
+      "component": "Contact",
+      "product": "szbolent",
+      "visibleTo": "public",
+      "sortOrder": 4
+    },
+    {
+      "id": 14,
+      "parentId": null,
+      "title": "博客",
+      "path": "/blog",
+      "icon": "edit",
+      "component": "Blog",
+      "product": "szbolent",
+      "visibleTo": "public",
+      "sortOrder": 5
+    },
+    {
+      "id": 15,
+      "parentId": null,
+      "title": "加入我们",
+      "path": "/careers",
+      "icon": "users",
+      "component": "Careers",
+      "product": "szbolent",
+      "visibleTo": "public",
+      "sortOrder": 6
+    }
+  ]
+}

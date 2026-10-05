@@ -39,9 +39,8 @@
   },
 
   "routes": [
-    { "prefix": "/v1/menus", "upstream": "page-engine", "desc": "菜单树（动态路由 + Header 数据源）" },
-    { "prefix": "/v1/pages", "upstream": "page-engine", "desc": "页面 Schema（by-path / CRUD）" },
-    { "prefix": "/v1/permissions", "upstream": "page-engine", "desc": "RBAC 权限查询与校验" },
+    { "prefix": "/v1/pages", "upstream": "page-engine", "desc": "页面 Schema（by-path / CRUD）。注意：当前 src/ 内零消费者（PageRenderer.vue 无路由引用），5300 未部署，属未接线保留项" },
+    { "prefix": "/v1/permissions", "upstream": "page-engine", "desc": "RBAC 权限查询与校验。注意：当前 src/ 内 can()/loadPermissions() 零调用点，5300 未部署，属未接线保留项" },
     { "prefix": "/v1", "upstream": "looma", "desc": "诗词 / RAG / 认证 / 支付（兜底，须最后声明）" },
     { "prefix": "/wp-json", "upstream": "wordpress", "desc": "博客 REST 通道（门户 Blog / 书架数据源）" },
     { "prefix": "/wp-admin", "upstream": "wordpress", "desc": "WP 后台。门户接管 /（static）后 location / 不再回源 WP，后台只能靠这条活着，删了就登不进去" },
