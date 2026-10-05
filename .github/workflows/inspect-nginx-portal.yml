@@ -12,9 +12,8 @@ name: Inspect Tencent portal nginx (read-only)
 # 这三者在公网侧的观测完全一样——都是 404——只能上机分。
 #
 # 只做读：
-#   - 不写任何文件（除 curl 的临时响应体）、不改配置、不 reload/restart nginx、
-#     不发布产物、不装包；
-#   - 只用 sudo 做「读」：nginx -T、ls、ss、curl。
+#   - 不写任何文件、不改配置、不 reload/restart nginx、不发布产物、不装包；
+#   - 只用 sudo 做「读」：nginx -T、ls、ss/netstat、curl。
 #
 # 触发：只有 workflow_dispatch。没有 push，也没有 tag——
 # 合并进 main 之后不会自己跑，要人工点。
@@ -22,6 +21,18 @@ name: Inspect Tencent portal nginx (read-only)
 # 范围：只碰腾讯云门户机 1.14.202.161。阿里云书店机（47.115.168.107）
 # 由护栏显式拒绝；书店侧的对照勘察以后放 szbolent-cn（那边才有自托管 runner
 # 和 DEPLOY_HOST，variety 用不上也不该碰）。
+#
+# ——「绿」的含义（v2，2026-10-05）——
+# 这一步绿，只代表三项证据都拿到了，不代表 /v1/menus 是好的。
+# 证据口径：
+#   E1 nginx -T：退出码 0 且确实打出了配置；失败 → ::error:: 并判红
+#   E2 监听端口：ss 成功即证据；ss 没有而 netstat 打出列表 → ::warning::，仍算拿到；
+#                两个都没有 → 判红
+#   E3 本机 menus：curl 能连上就算证据。HTTP 404 也是证据——说明本机连上了、
+#                路由在后端就是没有；只有连不上（拒绝连接 / 超时 / 退出码非 0）
+#                才判红。响应体不落盘（-o -），机器上不留临时文件。
+# 其余（目录不存在、hostname、产物 title）只 ::warning::，不参与判红。
+# 远端脚本跑完所有段落后再按 E1/E2/E3 汇总 exit，不以最后一句 echo 当退出码。
 #
 # 日志：输出全部留在 Actions 运行日志里（本仓 PRIVATE）。
 # nginx -T 会带出内部 upstream、路径、证书位置——不要往 PR 里贴。
@@ -76,57 +87,105 @@ jobs:
               User ${{ env.DEPLOY_USER }}
 
       - name: Read-only inspection
+        # 这里 set -e 是必须的：远端脚本证据不齐时会 exit 1，
+        # 靠它把 ssh 的非零退出码变成这一步的失败，GitHub 才会标红。
         run: |
+          set -euo pipefail
           ssh $SSH_OPTS deploy 'bash -s' <<'REMOTE'
           set -uo pipefail
           # 全程只读：没有写文件、没有改配置、没有 reload/restart。
+          # 不用 set -e：任何一段出问题都要继续跑完，最后按证据汇总判红。
 
-          echo "========== 0. 机器与时间 =========="
-          hostname
+          E1=0   # nginx -T
+          E2=0   # 监听端口
+          E3=0   # 本机 menus 接口
+
+          echo "========== 0. 机器与时间（仅告警，不参与判红） =========="
+          hostname 2>&1 || echo "::warning::hostname 取不到"
           date -u '+%Y-%m-%d %H:%M:%SZ'
-          uname -a
+          uname -a 2>&1 || echo "::warning::uname 取不到"
           echo
 
-          echo "========== 1. nginx 版本 =========="
-          sudo nginx -v 2>&1 || echo "（nginx 不在 PATH 或 sudo 不可用）"
+          echo "========== 1. nginx 版本（仅告警） =========="
+          sudo nginx -v 2>&1 || echo "::warning::nginx 不在 PATH 或 sudo 不可用"
           echo
 
-          echo "========== 2. 生效配置 nginx -T =========="
+          echo "========== 2. 生效配置 nginx -T（证据 E1） =========="
           echo "（重点看：server_name、location /v1/、proxy_pass、root、try_files）"
-          sudo nginx -T 2>&1 || echo "（nginx -T 失败：权限或配置语法错误）"
+          conf=$(sudo nginx -T 2>&1); rc=$?
+          printf '%s\n' "$conf"
+          if [ "${rc}" -ne 0 ]; then
+            echo "::error::nginx -T 退出码 ${rc}（权限不足？配置语法错误？）—— 拿不到生效配置"
+          elif [ -z "$conf" ]; then
+            echo "::error::nginx -T 退出码 0 但没有任何输出——等于没拿到配置"
+          elif ! printf '%s' "$conf" | grep -qE '^[[:space:]]*server[[:space:]]*\{'; then
+            echo "::error::nginx -T 的输出里没有一个 server 块——这份不是生效配置"
+          else
+            E1=1
+          fi
           echo
 
-          echo "========== 3. 站点配置目录 =========="
+          echo "========== 3. 站点配置目录（仅告警） =========="
           echo "--- /etc/nginx/sites-enabled/ ---"
-          sudo ls -la /etc/nginx/sites-enabled/ 2>&1 || echo "（目录不存在或不可读）"
+          sudo ls -la /etc/nginx/sites-enabled/ 2>&1 || echo "::warning::sites-enabled 不存在或不可读"
           echo "--- /etc/nginx/conf.d/ ---"
-          sudo ls -la /etc/nginx/conf.d/ 2>&1 || echo "（目录不存在或不可读）"
+          sudo ls -la /etc/nginx/conf.d/ 2>&1 || echo "::warning::conf.d 不存在或不可读"
           echo "--- /etc/nginx/sites-available/ ---"
-          sudo ls -la /etc/nginx/sites-available/ 2>&1 || echo "（目录不存在或不可读）"
+          sudo ls -la /etc/nginx/sites-available/ 2>&1 || echo "::warning::sites-available 不存在或不可读"
           echo
 
-          echo "========== 4. 监听端口（后端在不在听） =========="
-          sudo ss -ltnp 2>/dev/null || sudo netstat -ltnp 2>/dev/null || echo "（ss / netstat 都不可用）"
+          echo "========== 4. 监听端口（证据 E2） =========="
+          ports=$(sudo ss -ltnp 2>/dev/null); rc_ss=$?
+          if [ "${rc_ss}" -eq 0 ] && [ -n "$ports" ]; then
+            printf '%s\n' "$ports"
+            E2=1
+          else
+            ports2=$(sudo netstat -ltnp 2>/dev/null); rc_ns=$?
+            if [ "${rc_ns}" -eq 0 ] && [ -n "$ports2" ]; then
+              echo "::warning::ss 不可用（rc=${rc_ss}），改用 netstat——证据拿到，但请确认列表完整"
+              printf '%s\n' "$ports2"
+              E2=1
+            else
+              echo "::error::ss（rc=${rc_ss}）和 netstat（rc=${rc_ns}）都没拿到监听列表——无法判断后端在不在听"
+            fi
+          fi
           echo
 
-          echo "========== 5. 本机 menus 接口 =========="
+          echo "========== 5. 本机 menus 接口（证据 E3） =========="
           echo "GET http://127.0.0.1:5300/v1/menus?product=szbolent"
-          code=$(curl -sS -m 10 -o /tmp/menus_probe.json -w '%{http_code}' 'http://127.0.0.1:5300/v1/menus?product=szbolent' 2>/dev/null || echo "000")
-          echo "HTTP $code"
-          echo "--- 响应体前 800 字节 ---"
-          head -c 800 /tmp/menus_probe.json 2>/dev/null || true
-          echo
+          # 响应体不落盘：-o - 直接输出，-w 把状态码接在同一次输出后面
+          menus=$(curl -sS -m 10 -o - -w '\n[HTTP %{http_code}]\n' 'http://127.0.0.1:5300/v1/menus?product=szbolent' 2>&1); rc=$?
+          printf '%s\n' "$menus"
+          if [ "${rc}" -ne 0 ]; then
+            echo "::error::curl 退出码 ${rc}——连不上 127.0.0.1:5300（拒绝连接 / 超时 / 没这个端口），"
+            echo "::error::无法判断「后端没起」还是「后端没这个路由」，需要重跑或换端口"
+          else
+            E3=1
+            echo "（连上了就是证据：HTTP 404 同样算——说明本机可达、路由在后端就是没有。"
+            echo "  真正的判据在 nginx -T 里 /v1/ 是怎么转发的，以及上面端口表里谁在听。）"
+          fi
           echo
 
-          echo "========== 6. 门户产物（确认发的是哪一版） =========="
-          sudo ls -la /var/www/szbolent-portal/ 2>&1 || echo "（目录不存在）"
+          echo "========== 6. 门户产物（仅告警） =========="
+          sudo ls -la /var/www/szbolent-portal/ 2>&1 || echo "::warning::/var/www/szbolent-portal 不存在"
           echo "--- dist/index.html 的 title ---"
-          sudo grep -o '<title>[^<]*</title>' /var/www/szbolent-portal/dist/index.html 2>/dev/null || true
+          sudo grep -o '<title>[^<]*</title>' /var/www/szbolent-portal/dist/index.html 2>/dev/null \
+            || echo "::warning::dist/index.html 不存在或没有 title"
           echo
 
-          echo "========== 勘察结束（未做任何写操作） =========="
+          echo "========== 证据汇总 =========="
+          echo "E1 nginx -T: ${E1}   E2 监听端口: ${E2}   E3 本机 menus: ${E3}"
+          if [ "${E1}" -eq 1 ] && [ "${E2}" -eq 1 ] && [ "${E3}" -eq 1 ]; then
+            echo "三项证据齐全 → 作业判绿。"
+            echo "注意：绿只代表证据拿到了，不代表 /v1/menus 是好的——结论要看上面的输出。"
+            exit 0
+          fi
+          echo "::error::证据不齐，作业判红（E1=${E1} E2=${E2} E3=${E3}）。请看上面各段的 ::error:: 行，"
+          echo "::error::不要只看这一步的颜色就以为勘察完成。"
+          exit 1
           REMOTE
 
       - name: Reminder
         run: |
           echo "::notice::以上输出含机器上的内部配置（upstream、路径、证书位置）。留在 Actions 日志里即可，不要贴进 PR 或聊天窗口。"
+          echo "::notice::这一步绿 = 三项证据都拿到了；/v1/menus 本身是好是坏，要看日志正文。"
