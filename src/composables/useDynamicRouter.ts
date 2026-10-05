@@ -1,11 +1,15 @@
 /**
- * useDynamicRouter — 数据库驱动的动态路由加载器
+ * useDynamicRouter — 菜单驱动的动态路由加载器
  *
  * 职责：
- * 1. 从 Page Engine :5300 拉取菜单树（GET /v1/menus?product=...）
+ * 1. 读取**烘焙进构建**的菜单树（src/menus/<product>.json，由种子导出）
  * 2. 菜单数据供 Header 等消费端使用（menus ref 全局共享）
  * 3. 可选：将菜单树注入 Vue Router（传入 router 参数时）
  * 4. 权限过滤：只注入当前用户可见的菜单项
+ *
+ * 菜单不再走运行时接口：原先的 `GET /v1/menus`（Page Engine :5300）从未被
+ * 部署流水线拉起，线上恒 404。菜单是配置不是运行时数据，已烘焙进构建，
+ * 详见 src/menus/index.ts。用户角色仍来自 Looma `/v1/auth/profile`（initAuth）。
  *
  * 植入点：
  *   — Header.vue: loadMenus(undefined, 'szbolent') → 只拿菜单数据
@@ -16,8 +20,8 @@
 
 import { ref, type Ref } from 'vue'
 import type { Router, RouteRecordRaw } from 'vue-router'
-import { apiGet } from '@/api/looma'
 import { usePermission } from './usePermission'
+import { getBakedMenu } from '@/menus'
 import type { MenuItem, ResolvedRoute, ProductId } from '@/api/page-engine.types'
 
 // ============================================================
@@ -80,7 +84,7 @@ function resolveComponent(componentName: string | null | undefined): () => Promi
 // ============================================================
 
 export function useDynamicRouter() {
-  const { initialize: initAuth } = usePermission()
+  const { initialize: initAuth, roles, isAuthenticated } = usePermission()
 
   const loading: Ref<boolean> = ref(false)
 
@@ -107,10 +111,14 @@ export function useDynamicRouter() {
 
     try {
       // 1. 确保用户上下文已加载（调用 Looma :5200 /v1/auth/profile）
+      //    角色从这里来，不经过 Page Engine，所以烘焙后登录态菜单能力不丢
       await initAuth()
 
-      // 2. 拉取菜单树（调用 Page Engine :5300 /v1/menus?product=...）
-      const menuTree = await apiGet<MenuItem[]>(`/menus?product=${product}`)
+      // 2. 读取烘焙菜单（构建期数据，无网络请求）
+      const menuTree = getBakedMenu(product, {
+        roles: roles?.value ?? [],
+        isAuthenticated: isAuthenticated?.value ?? false,
+      })
       currentMenus.value = menuTree
       menuTrees.set(product, menuTree)
 

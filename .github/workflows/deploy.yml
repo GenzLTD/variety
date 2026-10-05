@@ -8,8 +8,12 @@ name: Deploy portal to Tencent (szbolent.com.cn)
 #
 # 发布面：构建门户 → 只把 dist 换到腾讯云 1.14.202.161 的
 # /var/www/szbolent-portal/dist。不改书店机，不重建 WP，不装阿里云 nginx。
-# nginx 以腾讯云机器上的站点为准；只有手动勾选 install_nginx_config
-# 才把仓库里的 nginx-tencent-portal.conf 装上去。
+# nginx 以腾讯云机器上的站点为准，本工作流不装 nginx 配置：
+# 原先的 install_nginx_config 开关指向仓库里并不存在的 nginx-tencent-portal.conf，
+# 勾上必定失败、不勾也照样发静态文件 —— 是纯噪音（issue #10），已删除。
+#
+# dry_run：手动触发默认 true，只做「构建 + 构建期验收」，不 SSH、不 rsync、不切换。
+# 用来在真正发布前预演一遍流水线。push tag 触发时恒为 false（真发布）。
 
 on:
   push:
@@ -17,10 +21,10 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
-      install_nginx_config:
-        description: '把 nginx-tencent-portal.conf 装到腾讯云（默认否：机器为准）'
+      dry_run:
+        description: '只构建 + 构建期验收，不上传不切换（默认 true：先预演）'
         type: boolean
-        default: false
+        default: true
 
 concurrency:
   group: deploy-tencent-portal
@@ -36,7 +40,6 @@ env:
   DEPLOY_USER: ubuntu
   FORBIDDEN_HOST: 47.115.168.107
   PORTAL_DIST: /var/www/szbolent-portal/dist
-  NGINX_DST: /etc/nginx/sites-available/szbolent-portal-tencent
   SITE_URL: https://www.szbolent.com.cn/
 
 jobs:
@@ -64,6 +67,18 @@ jobs:
           esac
           echo "发布目标: ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} （腾讯云橱窗）"
 
+      # dry_run 只在手动触发时有意义；push tag 时 inputs.dry_run 为空 → 视为 false（真发布）
+      - name: Resolve dry-run
+        id: dry
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "flag=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::dry_run=true —— 本轮只构建 + 构建期验收，不上传不切换"
+          else
+            echo "flag=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -89,7 +104,18 @@ jobs:
           grep -q 'id="app"' dist/index.html || { echo "::error::dist/index.html 里没有 Vue 挂载点"; exit 1; }
           ls dist/assets/*.js >/dev/null 2>&1 || { echo "::error::dist/assets 下没有 js 产物"; exit 1; }
 
+      # 构建期验收：菜单已烘焙进 dist，这里直接在产物上断言导航项，
+      # 不用等发布到线上才发现导航空（把 verify:nav 的渲染层断言前移）。
+      - name: Verify baked menu in build output
+        run: npm run test:unit
+
+      - name: Dry run summary
+        if: steps.dry.outputs.flag == 'true'
+        run: |
+          echo "::notice::dry_run 结束 —— 构建与构建期验收均通过，未上传、未切换。确认要发布请再跑一次并把 dry_run 设为 false"
+
       - name: Setup SSH
+        if: steps.dry.outputs.flag != 'true'
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -100,6 +126,8 @@ jobs:
               User ${{ env.DEPLOY_USER }}
 
       - name: Publish portal dist (atomic swap)
+        id: publish
+        if: steps.dry.outputs.flag != 'true'
         run: |
           set -euo pipefail
           ssh $SSH_OPTS deploy "mkdir -p ${{ env.PORTAL_DIST }}.new"
@@ -116,29 +144,8 @@ jobs:
           echo "门户产物已发布到腾讯云: \$(find "\$D" -type f | wc -l) 个文件"
           REMOTE
 
-      - name: Install Tencent nginx config
-        if: github.event_name == 'workflow_dispatch' && inputs.install_nginx_config
-        run: |
-          set -euo pipefail
-          test -s nginx-tencent-portal.conf || { echo "::error::仓库里没有 nginx-tencent-portal.conf"; exit 1; }
-          if grep -q '47.115.168.107' nginx-tencent-portal.conf || grep -q 'server_name szbolent.cn' nginx-tencent-portal.conf; then
-            echo "::error::nginx 副本指向阿里云或 szbolent.cn，拒绝安装"
-            exit 1
-          fi
-          rsync -az -e "ssh $SSH_OPTS" nginx-tencent-portal.conf deploy:/tmp/szbolent-portal-tencent.conf
-          ssh $SSH_OPTS deploy 'bash -s' <<REMOTE
-          set -euo pipefail
-          SRC=/tmp/szbolent-portal-tencent.conf
-          DST="${{ env.NGINX_DST }}"
-          sudo cp -p "\$DST" "\${DST}.bak.\$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
-          sudo cp "\$SRC" "\$DST"
-          sudo ln -sfn "\$DST" /etc/nginx/sites-enabled/szbolent-portal-tencent
-          sudo nginx -t
-          sudo systemctl reload nginx
-          echo "腾讯云 nginx 已安装 \$DST"
-          REMOTE
-
       - name: Verify showcase homepage
+        if: steps.dry.outputs.flag != 'true'
         run: |
           set -euo pipefail
           code=$(curl -sS -o /tmp/portal.html -w '%{http_code}' --max-time 20 "${{ env.SITE_URL }}")
@@ -152,6 +159,8 @@ jobs:
       #   verify:book 书店栏目必须渲染出卡片，且标题能在 feed 里对上（不是写死假数据）
       # 不要加 continue-on-error：这里红了说明用户真的看不到东西，就要它挡住发版。
       - name: Verify showcase in a real browser (nav + bookstore)
+        id: verify_browser
+        if: steps.dry.outputs.flag != 'true'
         env:
           # 门户 canonical 是 szbolent.com.cn；SITE_URL 那个 www 别名保持不变以免影响上面的旧步骤
           VERIFY_SITE: https://szbolent.com.cn/
@@ -171,3 +180,23 @@ jobs:
               exit 1
             }
           done
+
+      # 上面验收红了就把 dist 换回上一版（issue #11：过去只报错不回滚，
+      # 线上停在坏产物上直到人工介入）。dist.prev 由 atomic swap 步骤留下。
+      - name: Rollback dist on failed verification
+        if: failure() && steps.dry.outputs.flag != 'true' && steps.publish.outcome == 'success'
+        run: |
+          set -euo pipefail
+          ssh $SSH_OPTS deploy 'bash -s' <<REMOTE
+          set -euo pipefail
+          D="${{ env.PORTAL_DIST }}"; P="\${D}.prev"; B="\${D}.bad.\$(date +%Y%m%d%H%M%S)"
+          if [ ! -d "\$P" ]; then
+            echo "::warning::没有 dist.prev 可回滚，保留现场待人工处理"
+            exit 0
+          fi
+          mv "\$D" "\$B"
+          mv "\$P" "\$D"
+          chmod -R a+rX "\$D"
+          test -s "\$D/index.html" || { echo "::error::回滚后 index.html 不见了"; exit 1; }
+          echo "已回滚到上一版产物（坏产物留作证据: \$B）"
+          REMOTE

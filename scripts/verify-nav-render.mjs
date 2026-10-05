@@ -9,11 +9,14 @@
  *   ② 的可怕之处：curl 门户 /v1/menus 得到 200、验收全绿，而用户看到的导航
  *      仍然是空的。只有「真浏览器打开线上页」能一次看穿这两者。
  *
+ * 2026-10-06 改：菜单烘焙进构建（src/menus/<product>.json，源头是
+ *   backend/migrations 里的 share_menus 种子），运行时不再请求 /v1/menus。
+ *   因此网络层断言从「必须有这个请求且 200」翻转为「绝不该有这个请求」，
+ *   渲染层断言继续盯 DOM —— 用户看得见的东西没变，验收只会更硬。
+ *
  * 断言（全部为硬断言）：
- *   A. 页面确实发起了 /v1/menus 请求（没有 → 前端根本没接上数据源）
- *   B. 该请求返回 200（404/502 → 数据源不可用）
- *   C. 该请求是同源（Host ≠ 站点 Host → 绕过了门户 nginx 的 /v1 分流）
- *   D. 桌面导航 DOM 里真的出现约定菜单标题（渲染层兜底）
+ *   A. 页面**不得**发起 /v1/menus 请求（有 → 菜单烘焙被回退，5300 未部署必空导航）
+ *   B. 桌面导航 DOM 里真的出现约定菜单标题（渲染层，最终判据）
  *
  * 用法：
  *   npm run verify:nav                                   # 默认线上 https://szbolent.com.cn/
@@ -29,7 +32,6 @@ import { chromium } from 'playwright'
 const SITE = process.env.SITE_URL || 'https://szbolent.com.cn/'
 const EXPECT = (process.env.EXPECT_NAV || '首页,服务,案例,关于,联系').split(',')
 const NAV_SEL = process.env.NAV_SELECTOR || 'nav.nav-desktop ul.nav-menu > li > a.nav-link'
-const siteHost = new URL(SITE).host
 
 const ok = (s) => { console.log(`\u001b[0;32m✅ PASS\u001b[0m  ${s}`); PASS++ }
 const no = (s) => { console.log(`\u001b[0;31m❌ FAIL\u001b[0m  ${s}`); FAIL++; FAILED.push(s) }
@@ -45,7 +47,8 @@ console.log('')
 const browser = await chromium.launch()
 const page = await browser.newPage()
 
-// 菜单在 onMounted 里异步拉取，这里记录真实请求/响应当证据
+// 菜单已烘焙进构建（src/menus/<product>.json），不再有 /v1/menus 请求。
+// 这里反过来盯死它：**出现** /v1/menus 请求说明烘焙被回退了，必须红。
 const menuReqs = []
 page.on('response', (r) => {
   if (r.url().includes('/v1/menus')) menuReqs.push({ url: r.url(), status: r.status() })
@@ -63,31 +66,15 @@ try {
   no(`页面打开失败: ${e.message}`)
 }
 
-// A. 有没有真的去拉菜单
+// A. 烘焙后不该再有 /v1/menus 请求（有 → 菜单回退到运行时接口，5300 从未部署，必 404）
 if (menuReqs.length === 0) {
-  no('页面从未请求 /v1/menus（数据源没接上）')
+  ok('页面没有请求 /v1/menus（菜单已烘焙进构建，无运行时菜单依赖）')
 } else {
-  ok(`页面请求了 /v1/menus（${menuReqs.length} 次）`)
-}
-
-// B. 状态码
-if (menuReqs.length > 0) {
-  const bad = menuReqs.filter((r) => r.status !== 200)
-  if (bad.length === 0) {
-    ok(`/v1/menus 全部 200（数据源可用）`)
-  } else {
-    no(`/v1/menus 有非 200 响应: ${bad.map((r) => `${r.status} ${r.url}`).join(' | ')}`)
-  }
-}
-
-// C. 同源（跨域 base 是「绕过 /v1 分流 → 菜单 404」的根因）
-if (menuReqs.length > 0) {
-  const offsite = menuReqs.filter((r) => { try { return new URL(r.url).host !== siteHost } catch { return true } })
-  if (offsite.length === 0) {
-    ok(`/v1/menus 请求全部同源（${siteHost}，走门户 nginx 分流）`)
-  } else {
-    no(`/v1/menus 请求打到了跨域地址: ${[...new Set(offsite.map((r) => new URL(r.url).host))].join(', ')}（应同源 ${siteHost}）`)
-  }
+  no(
+    `页面仍在请求 /v1/menus（${menuReqs.length} 次：${menuReqs
+      .map((r) => `${r.status} ${r.url}`)
+      .join(' | ')}）——菜单烘焙被回退了，5300 未部署，导航会空`
+  )
 }
 
 // D. 渲染层：导航里真的有菜单项
@@ -116,9 +103,9 @@ if (FAIL > 0) {
   console.log('='.repeat(44))
   console.log('')
   console.log('排查顺序：')
-  console.log("  1) 服务端链路 → ssh 上跑 verify-prod.sh，看 /v1/menus 是否 200")
-  console.log('  2) 前端 base  → dist/assets/*.js 里不该出现 https://api.genz.ltd 绝对地址')
-  console.log('  3) 数据源    → curl 127.0.0.1:5300/v1/menus?product=szbolent 是否含菜单')
+  console.log('  1) 菜单真源  → src/menus/szbolent.json 是否由 node scripts/gen-menus.mjs 生成且与种子同步')
+  console.log('  2) 取数点    → src/composables/useDynamicRouter.ts 应走 getBakedMenu()，不是 apiGet')
+  console.log('  3) 渲染层    → Header.vue 的 navItems 是否拿到 menus，NAV_SELECTOR 选择器是否仍匹配')
   process.exit(1)
 }
 console.log('='.repeat(44))

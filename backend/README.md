@@ -2,6 +2,18 @@
 
 动态路由 + Page Schema + RBAC 权限引擎 — PlanetX 生态共享基础设施的后端实现。
 
+## ⚠️ 当前状态：未部署 / 已冻结（2026-10-06）
+
+- 本服务（:5300）**从未被任何部署流水线拉起**。门户 `deploy.yml` 只发前端 `dist`，
+  因此线上 `/v1/menus` 恒 404，曾导致顶部导航只剩静态「书店」（2026-09-28 两次假绿的来源：
+  CI 用「容器在不在 / curl 是否 200」验收，看不出导航空）。
+- **菜单已烘焙进构建**：真源是本目录下的种子 SQL，经 `scripts/gen-menus.mjs`
+  导出为 `src/menus/<product>.json`，前端不再调用 `/v1/menus`。
+- 前端对 `/v1/pages`、`/v1/permissions` 目前**零消费者**（`PageRenderer.vue` 无路由引用，
+  `can()` / `loadPermissions()` 无调用点），nginx 里保留这两条属未接线保留项。
+- 结论：**不要为了「把 CI 补全」去部署本服务**。等真要复活（菜单编辑器 / 重新接线 Page Schema）
+  时再单独立项，步骤见 `docs/PAGE_ENGINE_REVIVAL.md`（待补）。
+
 ## 技术栈
 
 | 组件 | 技术 |

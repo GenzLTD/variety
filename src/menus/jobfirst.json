@@ -1,0 +1,65 @@
+{
+  "$comment": "烘焙菜单 —— 由 scripts/gen-menus.mjs 从 backend/migrations/00{2,3}*.sql 导出，禁止手改。改菜单请改种子后重跑脚本，或走 PR 说明。",
+  "product": "jobfirst",
+  "source": [
+    "backend/migrations/002_seed.sql",
+    "backend/migrations/003_seed_extended.sql"
+  ],
+  "items": [
+    {
+      "id": 9,
+      "parentId": null,
+      "title": "职位搜索",
+      "path": "/jobs",
+      "icon": "search",
+      "component": null,
+      "product": "jobfirst",
+      "visibleTo": "public",
+      "sortOrder": 0
+    },
+    {
+      "id": 10,
+      "parentId": null,
+      "title": "我的简历",
+      "path": "/resume",
+      "icon": "user",
+      "component": null,
+      "product": "jobfirst",
+      "visibleTo": "authenticated",
+      "sortOrder": 1
+    },
+    {
+      "id": 11,
+      "parentId": null,
+      "title": "投递记录",
+      "path": "/applications",
+      "icon": "list",
+      "component": null,
+      "product": "jobfirst",
+      "visibleTo": "authenticated",
+      "sortOrder": 2
+    },
+    {
+      "id": 12,
+      "parentId": null,
+      "title": "收件箱",
+      "path": "/inbox",
+      "icon": "inbox",
+      "component": null,
+      "product": "jobfirst",
+      "visibleTo": "authenticated",
+      "sortOrder": 3
+    },
+    {
+      "id": 13,
+      "parentId": null,
+      "title": "企业面板",
+      "path": "/employer",
+      "icon": "briefcase",
+      "component": null,
+      "product": "jobfirst",
+      "visibleTo": "employer",
+      "sortOrder": 4
+    }
+  ]
+}
