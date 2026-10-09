@@ -44,13 +44,12 @@ function validate(c) {
     }
   }
 
-  // 兜底前缀 /v1 必须排在所有 /v1/xxx 之后，否则会吞掉 Page Engine 分流
+  // 兜底前缀 /v1 必须排在所有 /v1/xxx 之后，否则会吞掉细分路由
+  // 2026-10-09：原校验额外要求「/v1 之前至少有一条 /v1/* 细分项」，那是 Page Engine 时代
+  // 的假设（必须有 /v1/menus|pages|permissions）。#12/#13 下线后门户已无 page-engine 路由，
+  // 该存在性要求会挡住合法的「全部 /v1 → looma」形态。排序语义照旧校验，存在性不再强求。
   const v1BareIdx = c.routes.findIndex((r) => r.prefix === '/v1')
   if (v1BareIdx !== -1) {
-    const before = c.routes.slice(0, v1BareIdx).filter((r) => r.prefix.startsWith('/v1/'))
-    if (before.length === 0) {
-      errs.push('/v1 兜底项之前没有 /v1/* 细分项，Page Engine 分流会被吞掉')
-    }
     const after = c.routes.slice(v1BareIdx + 1).filter((r) => r.prefix.startsWith('/v1/'))
     if (after.length > 0) {
       errs.push(`/v1/* 细分项必须排在 /v1 之前，见: ${after.map((r) => r.prefix).join(', ')}`)
