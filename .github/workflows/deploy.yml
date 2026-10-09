@@ -91,6 +91,12 @@ jobs:
       - name: Contract sync gate (gen-entry --check)
         run: node scripts/gen-entry.mjs --check
 
+      # 菜单种子漂移门禁（issue #14）：种子 SQL 改了而 src/menus/*.json 没重生成 → 这里红。
+      # test:unit 只断言已提交的 JSON 值，比对不了种子，挡不住漂移；src/menus/index.ts
+      # 与 tests/unit/menus.test.ts 注释里声称的「CI --check 门禁」即本步。
+      - name: Menu seed sync gate (gen-menus --check)
+        run: npm run menus:check
+
       - name: Typecheck
         run: npm run typecheck
 
