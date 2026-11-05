@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "note": "入口契约真源。vite proxy / nginx / 冒烟脚本均由此文件驱动，禁止在他处重复声明分流规则。v2：补 TLS（sites.portal.tls）与 WP 保留路径，见 docs/DEPLOY_PIPELINE_RUN14_POSTMORTEM.md。",
+  "note": "入口契约真源。vite proxy / nginx / 冒烟脚本均由此文件驱动，禁止在他处重复声明分流规则。v2：补 TLS（sites.portal.tls）与 WP 保留路径，见 docs/DEPLOY_PIPELINE_RUN14_POSTMORTEM.md。v0.4.0（feat/tencent-contract-v0.4.0）：门户 /v1 切 looma-local 同机同源 + TLS 换腾讯云 acme.sh DNS-01，见部署手册 §6.1/§7。",
 
   "dev": {
     "port": 3000,
@@ -17,16 +17,17 @@
       "proxyHostHeader": "$host"
     },
     "looma": {
-      "desc": "Looma — 诗词 / RAG / 认证 / 支付",
+      "desc": "Looma — 诗词 / RAG / 认证 / 支付（外部 api.genz.ltd）。⚠️ v0.4.0 起无任何 route 引用：门户 /v1 已切 looma-local（同机同源）；保留定义供 dev 直连参考。",
       "dev": "http://api.genz.ltd",
       "prod": "http://api.genz.ltd",
       "env": "VITE_LOOMA_PROXY",
       "proxyHostHeader": "api.genz.ltd"
     },
     "looma-local": {
-      "desc": "Looma 本机实例（api.genz.ltd 那台机器上的 :5200）",
+      "desc": "Looma 本机实例（与门户同机部署的 :5200，gunicorn）",
       "dev": "http://127.0.0.1:5200",
       "prod": "http://127.0.0.1:5200",
+      "env": "VITE_LOOMA_LOCAL_PROXY",
       "proxyHostHeader": "$host"
     },
     "wordpress": {
@@ -39,7 +40,7 @@
   },
 
   "routes": [
-    { "prefix": "/v1", "upstream": "looma", "desc": "诗词 / RAG / 认证 / 支付（兜底，须最后声明）" },
+    { "prefix": "/v1", "upstream": "looma-local", "desc": "诗词 / RAG / 认证 / 支付（本机 Looma，同源无跨域；v0.4.0 由 looma 外跳 api.genz.ltd 切换而来）" },
     { "prefix": "/wp-json", "upstream": "wordpress", "desc": "博客 REST 通道（门户 Blog / 书架数据源）" },
     { "prefix": "/wp-admin", "upstream": "wordpress", "desc": "WP 后台。门户接管 /（static）后 location / 不再回源 WP，后台只能靠这条活着，删了就登不进去" },
     { "prefix": "/wp-login.php", "upstream": "wordpress", "desc": "WP 登录入口。与 /wp-admin 同因：不加则后台登录页 404" },
@@ -49,12 +50,11 @@
   "sites": {
     "portal": {
       "file": "nginx.conf",
-      "desc": "门户入口 — 阿里云 47.115.168.107",
+      "desc": "门户入口 — 腾讯云",
       "listen": 80,
       "defaultServer": true,
       "serverNames": [
         "_",
-        "47.115.168.107",
         "szbolent.cn",
         "www.szbolent.cn",
         "szbolent.com.cn",
@@ -67,13 +67,12 @@
 
       "tls": {
         "enabled": true,
-        "desc": "门户外层 TLS。证书由 certbot（webroot）签发，续期由 certbot-renew.timer + /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh 完成；生成器只在契约里声明，不负责签发。",
-        "certDir": "/etc/letsencrypt/live/szbolent.cn",
-        "serverNames": ["szbolent.cn", "www.szbolent.cn"],
-        "acmeWebroot": "/var/www/certbot",
+        "desc": "门户外层 TLS。证书由 acme.sh DNS-01 签发（DNSPod），续期由 acme.sh --cron + reloadcmd（sudo systemctl reload nginx）完成；生成器只在契约里声明，不负责签发。",
+        "certDir": "/etc/nginx/ssl/szbolent.com.cn",
+        "serverNames": ["szbolent.com.cn", "www.szbolent.com.cn"],
         "hsts": false,
         "hstsNote": "HSTS 先关。等 HTTPS 连续稳定运行一个续期周期（≥30 天）再置 true —— 一旦开启出错，浏览器会强制 https 且用户无法回退。",
-        "certHostsNote": "serverNames 必须与证书 SAN 一致，且这些域名的 A 记录必须指向本机；szbolent.com.cn / bolent.cn 目前不解析到本机，故不列入（它们仍走 :80 的 ACME + 301）。"
+        "certHostsNote": "serverNames 必须与证书 SAN 一致，且这些域名的 A 记录必须指向本机；szbolent.cn / bolent.cn 不在 SAN（其 A 记录仍指旧机，Phase 3 再 301 → www.szbolent.com.cn），故只走 :80。"
       },
 
       "defaultLocation": {
@@ -85,7 +84,7 @@
     },
     "api": {
       "file": "nginx-api.genz.ltd.conf",
-      "desc": "api.genz.ltd — Looma API 后端入口（1.14.202.161）",
+      "desc": "api.genz.ltd — Looma API 后端入口（腾讯云；Cloudflare 代理终止 TLS，源站 80）",
       "listen": 80,
       "defaultServer": false,
       "serverNames": ["api.genz.ltd"],

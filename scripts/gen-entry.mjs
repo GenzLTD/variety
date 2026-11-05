@@ -81,7 +81,8 @@ function validate(c) {
     const tls = portal.tls
     if (tls && tls.enabled) {
       if (!tls.certDir) errs.push('tls.enabled 必须给出 certDir')
-      if (!tls.acmeWebroot) errs.push('tls.enabled 必须给出 acmeWebroot（HTTP-01 续期通道的 webroot）')
+      // acmeWebroot 可选（v0.4.0）：仅 HTTP-01（certbot webroot）续期需要；
+      // DNS-01（acme.sh）不依赖 webroot 通道，缺省即不生成 /.well-known/acme-challenge/。
       if (!Array.isArray(tls.serverNames) || tls.serverNames.length === 0) {
         errs.push('tls.enabled 必须给出 serverNames（须与证书 SAN 一致，且 A 记录指向本机）')
       }
@@ -134,11 +135,13 @@ function gzipLines() {
 
 /**
  * ACME (HTTP-01) 校验通道。
- * 这是「证书能续下去」的唯一命门：门户口径下 location / 要么被 SPA 接管、
+ * 这是「certbot webroot 续期能续下去」的唯一命门：门户口径下 location / 要么被 SPA 接管、
  * 要么整体 301 到 https，若不单独放行 /.well-known/acme-challenge/，
  * certbot 的 webroot 校验必然失败 —— 而且是静默失败，直到证书到期当天全站 HTTPS 挂掉。
+ * v0.4.0 起可选：契约未给 acmeWebroot（DNS-01 / acme.sh 口径）时返回空，不生成该通道。
  */
 function acmeLines(tls) {
+  if (!tls.acmeWebroot) return []
   return [
     '',
     '    # Let\'s Encrypt HTTP-01 校验通道 —— certbot 续期依赖它，勿删。',
@@ -195,7 +198,9 @@ function renderPortal(site) {
 
   // ── :80 ──────────────────────────────────────────────────
   if (tls && !httpOnly) {
-    out.push('# ── :80 —— 只做两件事：放行 ACME 校验、其余全部 301 到 HTTPS ──')
+    out.push(site.tls && site.tls.acmeWebroot
+      ? '# ── :80 —— 只做两件事：放行 ACME 校验、其余全部 301 到 HTTPS ──'
+      : '# ── :80 —— 只做一件事：全部 301 到 HTTPS（证书走 acme.sh DNS-01，无 HTTP-01 通道） ──')
   } else if (tls) {
     out.push('# ── :80 —— TLS 引导态（gen-entry --http-only）：证书就绪前先以 HTTP 正常服务，')
     out.push('#        避免带 ssl_certificate 的配置在证书缺失时让 nginx -t 失败。──')
@@ -216,11 +221,14 @@ function renderPortal(site) {
     out.push(...gzipLines())
   }
 
-  if (tls) out.push(...acmeLines(tls))
+  const acme = tls ? acmeLines(tls) : []
+  if (tls) out.push(...acme)
 
   if (tls && !httpOnly) {
     out.push('')
-    out.push('    # ACME 通道已在上方放行；其余请求一律升级到 HTTPS。')
+    out.push('    # ' + (acme.length > 0
+      ? 'ACME 通道已在上方放行；其余请求一律升级到 HTTPS。'
+      : '证书走 acme.sh DNS-01（无 HTTP-01 webroot 通道）；其余请求一律升级到 HTTPS。'))
     out.push('    # 注意用 $host 而非固定域名：这样 www / 裸域各自升级后仍落在同一张证书的 SAN 内。')
     out.push('    location / {')
     out.push('        return 301 https://$host$request_uri;')
@@ -235,7 +243,7 @@ function renderPortal(site) {
   // ── :443 ─────────────────────────────────────────────────
   if (tls && !httpOnly) {
     out.push('')
-    out.push('# ── :443 —— 门户正式入口。证书由 certbot 签发/续期，本文件只引用路径 ──')
+    out.push('# ── :443 —— 门户正式入口。证书由 ' + (site.tls && site.tls.acmeWebroot ? 'certbot' : 'acme.sh DNS-01') + ' 签发/续期，本文件只引用路径 ──')
     out.push('server {')
     out.push('    listen 443 ssl;')
     out.push('    listen [::]:443 ssl;')
