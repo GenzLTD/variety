@@ -86,6 +86,15 @@ function validate(c) {
       if (!Array.isArray(tls.serverNames) || tls.serverNames.length === 0) {
         errs.push('tls.enabled 必须给出 serverNames（须与证书 SAN 一致，且 A 记录指向本机）')
       }
+      // fallbackHost 可选：未持证域名 :80 兜底 301 的目标（规范主机）。
+      // 必须在 serverNames 内——否则它自己也没有证书，301 过去照样 cert 错误。
+      if (tls.fallbackHost != null) {
+        if (typeof tls.fallbackHost !== 'string' || !/^[a-z0-9.-]+$/i.test(tls.fallbackHost)) {
+          errs.push('tls.fallbackHost 若提供必须是合法主机名')
+        } else if (!tls.serverNames.includes(tls.fallbackHost)) {
+          errs.push('tls.fallbackHost 必须包含在 tls.serverNames 内（规范主机自己得有证书）')
+        }
+      }
     }
   }
 
@@ -197,10 +206,26 @@ function renderPortal(site) {
   const out = [header(site.file, site.desc), '']
 
   // ── :80 ──────────────────────────────────────────────────
+  // 未持证域名（portal.serverNames 里不在 tls.serverNames 内的名字）不能被
+  // 送进 https://$host —— 那会撞上无证书的 443（cert 错误）。存在这类名字时，
+  // :80 拆成两块：证书域名块升级自身 HTTPS；其余 + 兜底 host 一律 301 到
+  // 规范主机（tls.fallbackHost，缺省 serverNames[0]）。全部持证时保持单块。
+  const certNames = tls ? tls.serverNames.slice() : []
+  const otherNames = tls && !httpOnly
+    ? site.serverNames.filter((n) => n !== '_' && !certNames.includes(n))
+    : []
+  const fallbackHost = (tls && tls.fallbackHost) || certNames[0] || ''
+
   if (tls && !httpOnly) {
-    out.push(site.tls && site.tls.acmeWebroot
-      ? '# ── :80 —— 只做两件事：放行 ACME 校验、其余全部 301 到 HTTPS ──'
-      : '# ── :80 —— 只做一件事：全部 301 到 HTTPS（证书走 acme.sh DNS-01，无 HTTP-01 通道） ──')
+    if (otherNames.length === 0) {
+      out.push(site.tls && site.tls.acmeWebroot
+        ? '# ── :80 —— 只做两件事：放行 ACME 校验、其余全部 301 到 HTTPS ──'
+        : '# ── :80 —— 只做一件事：全部 301 到 HTTPS（证书走 acme.sh DNS-01，无 HTTP-01 通道） ──')
+    } else {
+      out.push('# ── :80（两块）—— 证书覆盖域名升级到自身 HTTPS；')
+      out.push(`#               未持证域名（${otherNames.join(' / ')}）与兜底 host 一律 301 到规范主机 ${fallbackHost}，`)
+      out.push('#               绝不送进无证书的 https://$host。──')
+    }
   } else if (tls) {
     out.push('# ── :80 —— TLS 引导态（gen-entry --http-only）：证书就绪前先以 HTTP 正常服务，')
     out.push('#        避免带 ssl_certificate 的配置在证书缺失时让 nginx -t 失败。──')
@@ -208,37 +233,72 @@ function renderPortal(site) {
     out.push('# ── :80 —— HTTP 入口（契约未开启 tls）──')
   }
 
-  out.push('server {')
-  out.push(`    listen ${site.listen}${site.defaultServer ? ' default_server' : ''};`)
-  if (site.listen === 80) out.push('    listen [::]:80;')
-  out.push(`    server_name ${site.serverNames.join(' ')};`)
-  out.push('')
-  out.push(`    client_max_body_size ${site.clientMaxBodySize || '64m'};`)
-  out.push('    charset utf-8;')
-
-  if (httpOnly && site.gzip) {
+  if (tls && !httpOnly && otherNames.length > 0) {
+    // :80-A —— 证书覆盖域名：升级到自身 https（$host 落在证书 SAN 内）
+    const acme = acmeLines(tls)
+    out.push('server {')
+    out.push('    listen 80;')
+    out.push('    listen [::]:80;')
+    out.push(`    server_name ${certNames.join(' ')};`)
     out.push('')
-    out.push(...gzipLines())
-  }
-
-  const acme = tls ? acmeLines(tls) : []
-  if (tls) out.push(...acme)
-
-  if (tls && !httpOnly) {
+    out.push(`    client_max_body_size ${site.clientMaxBodySize || '64m'};`)
+    out.push('    charset utf-8;')
+    if (acme.length > 0) out.push(...acme)
     out.push('')
-    out.push('    # ' + (acme.length > 0
-      ? 'ACME 通道已在上方放行；其余请求一律升级到 HTTPS。'
-      : '证书走 acme.sh DNS-01（无 HTTP-01 webroot 通道）；其余请求一律升级到 HTTPS。'))
-    out.push('    # 注意用 $host 而非固定域名：这样 www / 裸域各自升级后仍落在同一张证书的 SAN 内。')
+    out.push('    # 证书覆盖的域名：升级到自身 HTTPS（$host 落在证书 SAN 内）。')
     out.push('    location / {')
     out.push('        return 301 https://$host$request_uri;')
     out.push('    }')
-  } else {
+    out.push('}')
     out.push('')
-    out.push(...renderLocations(site))
-  }
+    // :80-B —— 未持证域名 + 兜底 host：301 到规范主机
+    out.push('server {')
+    out.push(`    listen 80${site.defaultServer ? ' default_server' : ''};`)
+    out.push('    listen [::]:80;')
+    out.push(`    server_name _ ${otherNames.join(' ')};`)
+    out.push('')
+    out.push(`    client_max_body_size ${site.clientMaxBodySize || '64m'};`)
+    out.push('    charset utf-8;')
+    out.push('')
+    out.push('    # 未持证域名（不在 tls.serverNames 内）与兜底 host：301 到规范主机。')
+    out.push('    # 绝不能用 https://$host —— 那会把未持证域名送进无证书的 443（cert 错误）。')
+    out.push('    location / {')
+    out.push(`        return 301 https://${fallbackHost}$request_uri;`)
+    out.push('    }')
+    out.push('}')
+  } else {
+    out.push('server {')
+    out.push(`    listen ${site.listen}${site.defaultServer ? ' default_server' : ''};`)
+    if (site.listen === 80) out.push('    listen [::]:80;')
+    out.push(`    server_name ${site.serverNames.join(' ')};`)
+    out.push('')
+    out.push(`    client_max_body_size ${site.clientMaxBodySize || '64m'};`)
+    out.push('    charset utf-8;')
 
-  out.push('}')
+    if (httpOnly && site.gzip) {
+      out.push('')
+      out.push(...gzipLines())
+    }
+
+    const acme = tls ? acmeLines(tls) : []
+    if (tls) out.push(...acme)
+
+    if (tls && !httpOnly) {
+      out.push('')
+      out.push('    # ' + (acme.length > 0
+        ? 'ACME 通道已在上方放行；其余请求一律升级到 HTTPS。'
+        : '证书走 acme.sh DNS-01（无 HTTP-01 webroot 通道）；其余请求一律升级到 HTTPS。'))
+      out.push('    # 注意用 $host 而非固定域名：这样 www / 裸域各自升级后仍落在同一张证书的 SAN 内。')
+      out.push('    location / {')
+      out.push('        return 301 https://$host$request_uri;')
+      out.push('    }')
+    } else {
+      out.push('')
+      out.push(...renderLocations(site))
+    }
+
+    out.push('}')
+  }
 
   // ── :443 ─────────────────────────────────────────────────
   if (tls && !httpOnly) {

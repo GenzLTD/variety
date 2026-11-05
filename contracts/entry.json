@@ -70,9 +70,11 @@
         "desc": "门户外层 TLS。证书由 acme.sh DNS-01 签发（DNSPod），续期由 acme.sh --cron + reloadcmd（sudo systemctl reload nginx）完成；生成器只在契约里声明，不负责签发。",
         "certDir": "/etc/nginx/ssl/szbolent.com.cn",
         "serverNames": ["szbolent.com.cn", "www.szbolent.com.cn"],
+        "fallbackHost": "www.szbolent.com.cn",
+        "fallbackHostNote": "未持证域名（不在 serverNames 内）到达本机 :80 兜底块时 301 的目标（规范主机）。必须包含在 serverNames 内——否则它自己也没有证书。缺省 = serverNames[0]。",
         "hsts": false,
         "hstsNote": "HSTS 先关。等 HTTPS 连续稳定运行一个续期周期（≥30 天）再置 true —— 一旦开启出错，浏览器会强制 https 且用户无法回退。",
-        "certHostsNote": "serverNames 必须与证书 SAN 一致，且这些域名的 A 记录必须指向本机；szbolent.cn / bolent.cn 不在 SAN（其 A 记录仍指旧机，Phase 3 再 301 → www.szbolent.com.cn），故只走 :80。"
+        "certHostsNote": "serverNames 必须与证书 SAN 一致，且这些域名的 A 记录必须指向本机。未持证域名（szbolent.cn / bolent.cn —— A 记录仍指旧机，Phase 3 才切到本机）一旦到达本机，由 :80 兜底块 301 到 fallbackHost（www.szbolent.com.cn），不会被送进无证书的 https；Phase 3 切 DNS 后此行为即最终形态，无需再改。"
       },
 
       "defaultLocation": {
