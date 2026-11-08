@@ -307,12 +307,16 @@ export function sanitizeHTML(html: string): string {
 }
 
 /**
- * 书店 feed（szbolent.cn `bookstore/v1`）
+ * 书店 feed（同源 `bookstore/v1`）
  * 只取节选：id / title / genre / excerpt（诗句数组）/ url。
  * 卡片跳转 url 回原文，不请求 `/poem/<id>` 全文。
+ *
+ * 基址必须是**同源相对路径**：生产由 nginx 把 /wp-json 转发到 127.0.0.1:8080
+ * （单机内部组网），dev 由 vite proxy 转发到 :8800。写成绝对 URL = 跨域，
+ * 浏览器会被 CORS 拦下，等于书店栏目直接降级成「暂无文章」。
  */
 
-const SHELF_API_BASE = import.meta.env.VITE_SHELF_API_BASE || 'https://szbolent.cn/wp-json/bookstore/v1'
+const SHELF_API_BASE = import.meta.env.VITE_SHELF_API_BASE || '/wp-json/bookstore/v1'
 
 export interface ShelfFeedItem {
   id: string

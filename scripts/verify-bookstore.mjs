@@ -5,9 +5,9 @@
  * 由来（同一类事故模式的第三道防线）：
  *   ① /v1/menus 假绿（curl 200、浏览器空导航）→ verify-nav-render.mjs 已收口；
  *   ② 菜单链路假绿（Page Engine 从未部署）→ 同上；
- *   ③ 书店栏目是橱窗自己的页面（不依赖菜单），数据源是跨域的
- *      https://szbolent.cn/wp-json/bookstore/v1/feed —— 服务端 curl 通、CORS 通、
- *      都不等于「用户打开 /blog 看得到卡片」。
+ *   ③ 书店栏目是橱窗自己的页面（不依赖菜单），数据源是**同源**的
+ *      /wp-json/bookstore/v1/feed（生产由 nginx 内部组网转发到 127.0.0.1:8080）——
+ *      服务端 curl 通不等于「用户打开 /blog 看得到卡片」。
  *      feed 挂了页面会渲染成「📭 暂无文章 / 内容暂不可用」，而 SPA 路由照样 200，
  *      只看状态码的验收会把它判成绿。
  *
@@ -18,13 +18,14 @@
  *   D. 页面没落到降级态（.error-state / .empty-state，也没卡在 loading）
  *   E. DOM 里渲染出 ≥MIN_ITEMS 张卡片（渲染层兜底）
  *   F. 卡片标题来自 feed（不是写死的假数据）
- *   G. 「阅读原文」指向书店源站且新窗口打开（不是自跳 / 死链）
+ *   G. 「阅读原文」指向本站（同源书店）且新窗口打开（不是自跳 / 死链）
  *   H. genre 筛选点了之后仍有内容（筛选不是「一点就空」）
  *
  * 用法：
  *   npm run verify:book                                    # 默认线上 https://szbolent.com/blog
  *   SITE_URL=http://localhost:4173/ npm run verify:book    # 本地 preview 也适用
- *   BOOKSTORE_HOST=szbolent.cn MIN_ITEMS=5 npm run verify:book
+ *   MIN_ITEMS=5 npm run verify:book                        # 要求至少 5 张卡片
+ *   BOOKSTORE_HOST=其他主机 npm run verify:book            # 仅当原文链接指向别的主机时才需要
  * 退出码：0 = 全通过；1 = 有断言不过
  */
 import { chromium } from 'playwright'
@@ -33,7 +34,9 @@ const SITE = (process.env.SITE_URL || 'https://szbolent.com/').replace(/\/+$/, '
 const PAGE_PATH = process.env.BOOKSTORE_PATH || '/blog'
 const TARGET = `${SITE}${PAGE_PATH}`
 const FEED_MARK = process.env.FEED_MARK || '/wp-json/bookstore/v1/feed'
-const SOURCE_HOST = process.env.BOOKSTORE_HOST || 'szbolent.cn'
+// 书店与门户同机同源后，原文链接（items[].url）落在本站域名上。
+// 默认取 SITE 的 host，不再写死某个域名；过渡期可用 BOOKSTORE_HOST 覆盖。
+const SOURCE_HOST = process.env.BOOKSTORE_HOST || new URL(SITE).host
 const MIN_ITEMS = Number(process.env.MIN_ITEMS || 1)
 
 const ok = (s) => { console.log(`\u001b[0;32m✅ PASS\u001b[0m  ${s}`); PASS++ }
@@ -45,7 +48,7 @@ const FAILED = []
 console.log('='.repeat(52))
 console.log('  书店栏目 — 真实浏览器渲染验收')
 console.log(`  ${TARGET}  (${new Date().toISOString().replace('T', ' ').slice(0, 19)})`)
-console.log(`  数据源: ${FEED_MARK}（期望源站 ${SOURCE_HOST}）`)
+console.log(`  数据源: ${FEED_MARK}（同源；原文链接期望主机 ${SOURCE_HOST}）`)
 console.log('='.repeat(52))
 console.log('')
 
@@ -159,7 +162,7 @@ if (cards.length > 0) {
     if (c.target !== '_blank') notBlank++
   }
   if (badLink === 0) {
-    ok(`${cards.length} 张卡片的原文链接都指向书店源站: ${[...linkHosts].join(', ')}`)
+    ok(`${cards.length} 张卡片的原文链接都指向本站: ${[...linkHosts].join(', ')}`)
   } else {
     no(`${badLink} 张卡片的原文链接不是 ${SOURCE_HOST}（实际: ${[...linkHosts].join(', ')}）`)
   }
@@ -217,11 +220,12 @@ if (FAIL > 0) {
   console.log(`  失败项: ${FAILED.join('; ')}`)
   console.log('='.repeat(52))
   console.log('')
-  console.log('排查顺序：')
-  console.log('  1) 源站 feed  → curl https://szbolent.cn/wp-json/bookstore/v1/feed（应 200 且 count>0）')
-  console.log('  2) 跨域       → 带 Origin: 门户域名 看 Access-Control-Allow-Origin 是否放行')
-  console.log('  3) 前端变量   → 构建产物里的 VITE_SHELF_API_BASE 是不是指向书店源站')
-  console.log('  4) 页面路由   → 门户 nginx 的 /blog 是否 try_files 回退到 SPA index.html')
+  console.log('排查顺序（单机部署，全程同源，没有 CORS 这一环）：')
+  console.log('  1) 本机 feed   → curl -H "Host: <站点域名>" http://127.0.0.1/wp-json/bookstore/v1/feed（应 200 且 count>0）')
+  console.log('  2) nginx 转发  → location /wp-json 是否 proxy_pass 到 127.0.0.1:8080（sudo nginx -T | grep -A3 /wp-json）')
+  console.log('  3) WP 侧路由   → 同机 WP 是否装了 bookstore/v1 这条 REST 路由（curl <站点>/wp-json/bookstore/v1）')
+  console.log('  4) 前端变量    → 构建产物里的 VITE_SHELF_API_BASE 必须是相对路径 /wp-json/bookstore/v1')
+  console.log('  5) 页面路由    → 门户 nginx 的 /blog 是否 try_files 回退到 SPA index.html')
   process.exit(1)
 }
 console.log('='.repeat(52))
