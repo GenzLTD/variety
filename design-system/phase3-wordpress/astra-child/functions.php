@@ -377,7 +377,7 @@ function bolent_customizer_register($wp_customize) {
         'panel' => 'bolent_home_panel',
     ));
     $contact_info = array(
-        'contact_email'   => array('label' => '邮箱', 'default' => 'contact@szbolent.com.cn'),
+        'contact_email'   => array('label' => '邮箱', 'default' => 'contact@szbolent.com'),
         'contact_phone'   => array('label' => '电话', 'default' => '+86 0755-XXXX-XXXX'),
         'contact_address' => array('label' => '地址', 'default' => '深圳市 · 武汉市 · 中国香港'),
     );

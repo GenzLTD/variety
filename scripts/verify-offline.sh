@@ -106,16 +106,28 @@ printf "\n--- L1+ 入口契约必须项（离线可断言）---\n"
 SHOW_OUTPUT=1
 run "入口配置含 443/TLS" entry_tls \
     grep -q 'listen 443 ssl' nginx.conf
-run "入口配置含 ACME 校验通道（证书可续期）" entry_acme \
-    grep -q '\.well-known/acme-challenge/' nginx.conf
+# 证书续期口径（2026-11-08）：v0.4.0 起由 certbot HTTP-01（webroot）改为 acme.sh DNS-01，
+# 产物里已没有 /.well-known/acme-challenge/ 通道。原先无条件断言该通道存在，等于断言
+# 一个契约里已不存在的机制，会永久红（本机实测 2 项 FAIL）。改成两条：
+#   ① 产物里的证书路径必须与契约 tls.certDir 一致 —— 换域名/换证书目录而产物没跟着
+#      重新生成时，这里红；
+#   ② HTTP-01 通道仅在契约显式声明 acmeWebroot 时才要求存在（DNS-01 不依赖它）。
+CERT_DIR="$(node -p "require('./contracts/entry.json').sites.portal.tls.certDir" 2>/dev/null)"
+ACME_WEBROOT="$(node -p "require('./contracts/entry.json').sites.portal.tls.acmeWebroot || ''" 2>/dev/null)"
+run "证书路径与契约 tls.certDir 一致" entry_cert \
+    grep -qF "$CERT_DIR/fullchain.pem" nginx.conf
+run "HTTP-01 通道（仅当契约声明 acmeWebroot 时必须存在）" entry_acme \
+    bash -c "[ -z '$ACME_WEBROOT' ] || grep -q '\.well-known/acme-challenge/' nginx.conf"
 run "入口配置把 / 交给门户产物（root dist + try_files 回退）" entry_static \
     bash -c 'grep -q "root /var/www/szbolent-portal/dist" nginx.conf && grep -q "try_files" nginx.conf'
 run "WP 保留通道齐全（/wp-json /wp-admin /wp-content）" entry_wp \
     bash -c 'for p in /wp-json /wp-admin /wp-content; do grep -q "location $p" nginx.conf || exit 1; done'
 # 引导态必须是「不含 ssl_certificate 指令」的：证书没签发时它也得能装上去。
 # 只匹配行首指令，不匹配注释里提到的同类字样（注释里有这个词，见上文注释）。
+# 这里原先还要求引导态里必须有 acme-challenge —— 同属 certbot 时代的遗留断言，
+# DNS-01 口径下引导态本就没有该通道。改为断言它确实产出可用的 :80 server。
 run "TLS 引导态可生成且不含 ssl_certificate 指令" entry_bootstrap \
-    bash -c 'out=$(node scripts/gen-entry.mjs --http-only) && printf %s "$out" | grep -q "acme-challenge" && ! printf %s "$out" | grep -qE "^[[:space:]]*ssl_certificate"'
+    bash -c 'out=$(node scripts/gen-entry.mjs --http-only) && printf %s "$out" | grep -q "listen 80" && ! printf %s "$out" | grep -qE "^[[:space:]]*ssl_certificate"'
 SHOW_OUTPUT=0
 
 # ── L2：构建 / 类型（依赖 node_modules，版本由 package-lock.json 锁定）──

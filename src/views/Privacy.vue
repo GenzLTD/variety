@@ -5,7 +5,7 @@
 
     <section>
       <h2>1. 我们收集的信息</h2>
-      <p>在您使用 www.szbolent.cn 服务过程中，我们可能收集以下信息：</p>
+      <p>在您使用 www.szbolent.com 服务过程中，我们可能收集以下信息：</p>
       <ul>
         <li><strong>账户信息</strong>：注册时提供的邮箱地址、用户名。</li>
         <li><strong>微信登录信息</strong>：通过微信小程序授权获取的 OpenID。</li>
@@ -72,7 +72,7 @@
       <h2>9. 联系方式</h2>
       <p>
         如有任何关于本隐私政策的问题或意见，请通过以下方式联系我们：<br />
-        邮箱：privacy@szbolent.com.cn<br />
+        邮箱：privacy@szbolent.com<br />
       </p>
     </section>
   </div>

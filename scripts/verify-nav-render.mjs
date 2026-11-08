@@ -19,17 +19,17 @@
  *   B. 桌面导航 DOM 里真的出现约定菜单标题（渲染层，最终判据）
  *
  * 用法：
- *   npm run verify:nav                                   # 默认线上 https://szbolent.com.cn/
+ *   npm run verify:nav                                   # 默认线上 https://szbolent.com/
  *   SITE_URL=http://localhost:4173/ npm run verify:nav   # 本地预览也适用
  *
- * 默认站点（2026-10-04 订正）：门户橱窗是 szbolent.com.cn；www.szbolent.cn 会 301
- * 到 szbolent.cn，那是阿里云上的 WordPress 书店源站，上面没有门户的 nav ——
- * 默认值写错站点，等于在验一台不相关的机器。
+ * 默认站点（2026-11-08 订正）：官网是 szbolent.com（裸域；www.szbolent.com 在同一张
+ * 证书 SAN 内，命中同一块 :443）。不要指向 szbolent.cn —— 那是阿里云上的 WordPress
+ * 书店源站，上面没有门户的 nav，默认值写错站点等于在验一台不相关的机器。
  * 退出码：0 = 全通过；1 = 有断言不过
  */
 import { chromium } from 'playwright'
 
-const SITE = process.env.SITE_URL || 'https://szbolent.com.cn/'
+const SITE = process.env.SITE_URL || 'https://szbolent.com/'
 const EXPECT = (process.env.EXPECT_NAV || '首页,服务,案例,关于,联系').split(',')
 const NAV_SEL = process.env.NAV_SELECTOR || 'nav.nav-desktop ul.nav-menu > li > a.nav-link'
 

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://www.szbolent.cn/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://www.szbolent.cn/about</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://www.szbolent.cn/services</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://www.szbolent.cn/blog</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://www.szbolent.cn/case-study</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://www.szbolent.cn/careers</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://www.szbolent.cn/contact</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://www.szbolent.cn/pricing</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://www.szbolent.cn/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://www.szbolent.cn/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://www.szbolent.cn/poetry</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.szbolent.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://www.szbolent.com/about</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.szbolent.com/services</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.szbolent.com/blog</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.szbolent.com/case-study</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.szbolent.com/careers</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.szbolent.com/contact</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.szbolent.com/pricing</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.szbolent.com/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://www.szbolent.com/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://www.szbolent.com/poetry</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
 </urlset>

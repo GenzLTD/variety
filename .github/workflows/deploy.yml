@@ -1,14 +1,19 @@
-name: Deploy portal to Tencent (szbolent.com.cn)
+name: Deploy portal (szbolent.com)
 
-# 橱窗只发腾讯云。szbolent-portal 已废弃，门户由本仓（variety）接替。
+# 官网只发这一台生产机。szbolent-portal 已废弃，门户由本仓（variety）接替。
+#
+# 主机地址**不写死在仓库里**：由 repo 变量 vars.DEPLOY_HOST 注入
+# （Settings → Secrets and variables → Actions → Variables）。换服务器只改这个变量、
+# 不改本文件 —— 2026-11-08 主域从 szbolent.com.cn 迁到 szbolent.com 时，
+# 原先写死的 1.14.202.161 就是「换个机器必须连带改 workflow」的坏味道。
 #
 # 禁止发布到阿里云 47.115.168.107。那台机器是 szbolent.cn 个人书店
 # （WordPress）。本工作流若再把门户 SPA 和 nginx 装上去，会用 location /
 # 盖住博客首页和 /poem/ 原文页。书店的正文、容器、证书都不由这里动。
 #
-# 发布面：构建门户 → 只把 dist 换到腾讯云 1.14.202.161 的
+# 发布面：构建门户 → 只把 dist 换到目标机（$DEPLOY_HOST）的
 # /var/www/szbolent-portal/dist。不改书店机，不重建 WP，不装阿里云 nginx。
-# nginx 以腾讯云机器上的站点为准，本工作流不装 nginx 配置：
+# nginx 以目标机器上的站点为准，本工作流不装 nginx 配置：
 # 原先的 install_nginx_config 开关指向仓库里并不存在的 nginx-tencent-portal.conf，
 # 勾上必定失败、不勾也照样发静态文件 —— 是纯噪音（issue #10），已删除。
 #
@@ -35,12 +40,14 @@ permissions:
 
 env:
   SSH_OPTS: '-o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o BatchMode=yes -o StrictHostKeyChecking=no'
-  # 写死。不要从 DEPLOY_HOST 回落到 47.115.168.107。
-  DEPLOY_HOST: 1.14.202.161
-  DEPLOY_USER: ubuntu
+  # 主机由 repo 变量注入，不写死。禁止回落到 47.115.168.107（下方 Validate 步骤兜住）。
+  # 未配置 vars.DEPLOY_HOST 时：dry_run 只告警，真发布直接红 —— 不会 ssh 到空主机。
+  DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+  DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
   FORBIDDEN_HOST: 47.115.168.107
   PORTAL_DIST: /var/www/szbolent-portal/dist
-  SITE_URL: https://www.szbolent.com.cn/
+  # 门户规范主机的 www 别名（TLS 证书 SAN 覆盖 szbolent.com / www.szbolent.com）
+  SITE_URL: https://www.szbolent.com/
 
 jobs:
   deploy:
@@ -52,9 +59,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Refuse Aliyun bookstore host
+      - name: Validate deploy host
         run: |
           set -euo pipefail
+          if [ -z "${{ env.DEPLOY_HOST }}" ]; then
+            # dry_run 不 SSH，缺变量不影响预演；真发布必须先配上目标机。
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "::warning::repo 变量 DEPLOY_HOST 未设置 —— dry_run 不 SSH，可继续；真发布会在这里被拒。"
+              exit 0
+            fi
+            echo "::error::repo 变量 DEPLOY_HOST 未设置。请到 Settings → Secrets and variables → Actions → Variables 新建 DEPLOY_HOST（新服务器公网 IP 或主机名）。"
+            exit 1
+          fi
           if [ "${{ env.DEPLOY_HOST }}" = "${{ env.FORBIDDEN_HOST }}" ]; then
             echo "::error::拒绝发布到阿里云 ${{ env.FORBIDDEN_HOST }}（szbolent.cn 个人书店）"
             exit 1
@@ -65,7 +81,7 @@ jobs:
               exit 1
               ;;
           esac
-          echo "发布目标: ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} （腾讯云橱窗）"
+          echo "发布目标: ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} （官网 szbolent.com）"
 
       # dry_run 只在手动触发时有意义；push tag 时 inputs.dry_run 为空 → 视为 false（真发布）
       - name: Resolve dry-run
@@ -168,8 +184,9 @@ jobs:
         id: verify_browser
         if: steps.dry.outputs.flag != 'true'
         env:
-          # 门户 canonical 是 szbolent.com.cn；SITE_URL 那个 www 别名保持不变以免影响上面的旧步骤
-          VERIFY_SITE: https://szbolent.com.cn/
+          # 门户 canonical 是裸域 szbolent.com（nginx.conf 的 :443 server_name 与之对齐）；
+          # SITE_URL 那个 www 别名保持不变以免影响上面的旧步骤
+          VERIFY_SITE: https://szbolent.com/
         run: |
           set -euo pipefail
           npx playwright install --with-deps chromium || npx playwright install chromium

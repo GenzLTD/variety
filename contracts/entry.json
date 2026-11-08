@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "note": "入口契约真源。vite proxy / nginx / 冒烟脚本均由此文件驱动，禁止在他处重复声明分流规则。v2：补 TLS（sites.portal.tls）与 WP 保留路径，见 docs/DEPLOY_PIPELINE_RUN14_POSTMORTEM.md。v0.4.0（feat/tencent-contract-v0.4.0）：门户 /v1 切 looma-local 同机同源 + TLS 换腾讯云 acme.sh DNS-01，见部署手册 §6.1/§7。",
+  "note": "入口契约真源。vite proxy / nginx / 冒烟脚本均由此文件驱动，禁止在他处重复声明分流规则。v2：补 TLS（sites.portal.tls）与 WP 保留路径，见 docs/DEPLOY_PIPELINE_RUN14_POSTMORTEM.md。v0.4.0（feat/tencent-contract-v0.4.0）：门户 /v1 切 looma-local 同机同源 + TLS 换 acme.sh DNS-01，见部署手册 §6.1/§7。v0.5.0（2026-11-08）：官网主域迁至 szbolent.com / www.szbolent.com，停用 szbolent.com.cn —— certDir 随之改为 /etc/nginx/ssl/szbolent.com，旧域名不再签发、也不再出现在 serverNames 内（到达本机 :80 时按未持证域名走 301 兜底）。",
 
   "dev": {
     "port": 3000,
@@ -50,15 +50,15 @@
   "sites": {
     "portal": {
       "file": "nginx.conf",
-      "desc": "门户入口 — 腾讯云",
+      "desc": "门户入口 — 生产（szbolent.com / www.szbolent.com；主机地址由 CI repo 变量 vars.DEPLOY_HOST 决定，不在契约里写死）",
       "listen": 80,
       "defaultServer": true,
       "serverNames": [
         "_",
+        "szbolent.com",
+        "www.szbolent.com",
         "szbolent.cn",
         "www.szbolent.cn",
-        "szbolent.com.cn",
-        "www.szbolent.com.cn",
         "bolent.cn",
         "www.bolent.cn"
       ],
@@ -68,13 +68,13 @@
       "tls": {
         "enabled": true,
         "desc": "门户外层 TLS。证书由 acme.sh DNS-01 签发（DNSPod），续期由 acme.sh --cron + reloadcmd（sudo systemctl reload nginx）完成；生成器只在契约里声明，不负责签发。",
-        "certDir": "/etc/nginx/ssl/szbolent.com.cn",
-        "serverNames": ["szbolent.com.cn", "www.szbolent.com.cn"],
-        "fallbackHost": "www.szbolent.com.cn",
+        "certDir": "/etc/nginx/ssl/szbolent.com",
+        "serverNames": ["szbolent.com", "www.szbolent.com"],
+        "fallbackHost": "www.szbolent.com",
         "fallbackHostNote": "未持证域名（不在 serverNames 内）到达本机 :80 兜底块时 301 的目标（规范主机）。必须包含在 serverNames 内——否则它自己也没有证书。缺省 = serverNames[0]。",
         "hsts": false,
         "hstsNote": "HSTS 先关。等 HTTPS 连续稳定运行一个续期周期（≥30 天）再置 true —— 一旦开启出错，浏览器会强制 https 且用户无法回退。",
-        "certHostsNote": "serverNames 必须与证书 SAN 一致，且这些域名的 A 记录必须指向本机。未持证域名（szbolent.cn / bolent.cn —— A 记录仍指旧机，Phase 3 才切到本机）一旦到达本机，由 :80 兜底块 301 到 fallbackHost（www.szbolent.com.cn），不会被送进无证书的 https；Phase 3 切 DNS 后此行为即最终形态，无需再改。"
+        "certHostsNote": "serverNames 必须与证书 SAN 一致，且这些域名的 A 记录必须指向本机。未持证域名（szbolent.cn / www.szbolent.cn / bolent.cn / www.bolent.cn —— A 记录仍指旧机，Phase 3 才切到本机）一旦到达本机，由 :80 兜底块 301 到 fallbackHost（www.szbolent.com），不会被送进无证书的 https。szbolent.com.cn / www.szbolent.com.cn 自 v0.5.0（2026-11-08）起从 serverNames 与证书路径中移除，不再续期；到达本机时按未持证域名处理。"
       },
 
       "defaultLocation": {
@@ -86,7 +86,7 @@
     },
     "api": {
       "file": "nginx-api.genz.ltd.conf",
-      "desc": "api.genz.ltd — Looma API 后端入口（腾讯云；Cloudflare 代理终止 TLS，源站 80）",
+      "desc": "api.genz.ltd — Looma API 后端入口（与门户同机；Cloudflare 代理终止 TLS，源站 80）",
       "listen": 80,
       "defaultServer": false,
       "serverNames": ["api.genz.ltd"],

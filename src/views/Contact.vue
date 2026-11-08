@@ -34,7 +34,7 @@
                 <div class="info-icon">&#x1F4E7;</div>
                 <div class="info-content">
                   <h4>电子邮箱</h4>
-                  <p>hello@szbolent.com.cn<br>support@szbolent.com.cn</p>
+                  <p>hello@szbolent.com<br>support@szbolent.com</p>
                 </div>
               </div>
 
@@ -243,7 +243,7 @@ const handleSubmit = async () => {
     formData.message = ''
   } catch (err) {
     console.error('表单提交失败:', err)
-    errors.message = '提交失败，请稍后重试或直接发送邮件至 hello@szbolent.com.cn'
+    errors.message = '提交失败，请稍后重试或直接发送邮件至 hello@szbolent.com'
   } finally {
     isSubmitting.value = false
   }

@@ -36,7 +36,7 @@ get_header();
                         </div>
                         <div>
                             <h4 style="font-size:15px;font-weight:600;color:var(--bolent-ink);margin-bottom:4px;">邮箱</h4>
-                            <p style="font-size:15px;color:var(--bolent-text-secondary);"><?php echo esc_html(bolent_mod('contact_email', 'contact@szbolent.com.cn')); ?></p>
+                            <p style="font-size:15px;color:var(--bolent-text-secondary);"><?php echo esc_html(bolent_mod('contact_email', 'contact@szbolent.com')); ?></p>
                         </div>
                     </div>
 

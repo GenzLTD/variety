@@ -88,7 +88,7 @@ get_header();
             ?>
                 <div style="text-align:center;padding:60px 20px;color:var(--bolent-text-muted);">
                     <p style="font-size:18px;">暂无开放职位，请关注我们的招聘动态。</p>
-                    <p style="margin-top:12px;">欢迎发送简历至 <a href="mailto:hr@szbolent.com.cn" style="color:var(--bolent-primary);">hr@szbolent.com.cn</a>，我们会主动联系您。</p>
+                    <p style="margin-top:12px;">欢迎发送简历至 <a href="mailto:hr@szbolent.com" style="color:var(--bolent-primary);">hr@szbolent.com</a>，我们会主动联系您。</p>
                 </div>
             <?php endif; ?>
         </div>
@@ -131,8 +131,8 @@ get_header();
 <section class="bolent-cta">
     <div class="bolent-cta-content">
         <h2>没有找到合适的岗位？</h2>
-        <p>发送简历至 hr@szbolent.com.cn，我们期待与您相遇</p>
-        <a href="mailto:hr@szbolent.com.cn" class="bolent-btn-harmony">投递简历</a>
+        <p>发送简历至 hr@szbolent.com，我们期待与您相遇</p>
+        <a href="mailto:hr@szbolent.com" class="bolent-btn-harmony">投递简历</a>
     </div>
 </section>
 

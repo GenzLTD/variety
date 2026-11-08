@@ -33,7 +33,7 @@ cp -r design-system/phase3-wordpress/astra-child /path/to/wp-content/themes/bole
 ### 5. 配置 Contact Form 7
 1. 后台 → 联系 → 新建表单
 2. 将 `contact-form-7/contact-form.php` 中的表单代码粘贴到「表单」标签
-3. 「邮件」标签设置收件人 `business@szbolent.com.cn`
+3. 「邮件」标签设置收件人 `business@szbolent.com`
 4. 保存后复制短代码 `[contact-form-7 id="XX"]`
 5. 在 Contact 页面模板中粘贴短代码
 

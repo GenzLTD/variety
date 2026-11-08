@@ -1,7 +1,7 @@
 /**
  * 深伯乐门户品牌配置
- * 对齐双域名架构：.cn（个人备案·内容站）+ .com.cn（企业备案·API/商业）
- * 门户域名：www.szbolent.com.cn
+ * 双域名架构：.cn（个人备案 · WordPress 书店/内容站）+ .com（企业备案 · 官网/商业）
+ * 门户域名：www.szbolent.com（TLS 证书 SAN 覆盖 szbolent.com + www.szbolent.com）
  */
 
 export const companyInfo = {
@@ -16,15 +16,15 @@ export const companyInfo = {
     '深伯乐是一家融合现代科技与文化底蕴的数智企业。我们提供软件开发、数字化、自动化、IT 管理与 IT 外包等全方位服务，并以 AI 读诗为特色板块，让技术在诗意中落地。',
 
   contact: {
-    email: 'hello@szbolent.com.cn',
-    support: 'support@szbolent.com.cn',
+    email: 'hello@szbolent.com',
+    support: 'support@szbolent.com',
     workTime: '周一至周五 9:00–18:00',
   },
 
   address: {
     main: {
       city: '中国',
-      full: 'www.szbolent.cn',
+      full: 'www.szbolent.com',
       postcode: '',
     },
   },
@@ -99,7 +99,7 @@ export const seoConfig = {
     '昇腾 ISV',
     '昇腾认证服务商',
   ],
-  siteUrl: 'https://www.szbolent.cn',
+  siteUrl: 'https://www.szbolent.com',
   ogImage: '/images/og-image.jpg',
 }
 

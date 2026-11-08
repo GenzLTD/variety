@@ -1,7 +1,7 @@
 name: Inspect Tencent portal nginx (read-only)
 
 # =============================================================
-# 只读勘察：诊断门户 https://szbolent.com.cn/v1/menus?product=szbolent 返回 404。
+# 只读勘察：诊断门户 /v1/menus?product=szbolent 返回 404（当时的站点是 szbolent.com.cn）。
 #
 # 现状：门户 SPA 起得来、书店栏目也正常，但顶部导航只剩静态「书店」——
 # 浏览器报 [DynamicRouter] Failed to load menus: 404。
@@ -18,7 +18,7 @@ name: Inspect Tencent portal nginx (read-only)
 # 触发：只有 workflow_dispatch。没有 push，也没有 tag——
 # 合并进 main 之后不会自己跑，要人工点。
 #
-# 范围：只碰腾讯云门户机 1.14.202.161。阿里云书店机（47.115.168.107）
+# 范围：只碰官网门户机（vars.DEPLOY_HOST）。阿里云书店机（47.115.168.107）
 # 由护栏显式拒绝；书店侧的对照勘察以后放 szbolent-cn（那边才有自托管 runner
 # 和 DEPLOY_HOST，variety 用不上也不该碰）。
 #
@@ -50,9 +50,9 @@ permissions:
 
 env:
   SSH_OPTS: '-o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o BatchMode=yes -o StrictHostKeyChecking=no'
-  # 写死。不要从别处回落到 47.115.168.107。
-  DEPLOY_HOST: 1.14.202.161
-  DEPLOY_USER: ubuntu
+  # 由 repo 变量注入（同 deploy.yml）。不要从别处回落到 47.115.168.107。
+  DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+  DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
   FORBIDDEN_HOST: 47.115.168.107
 
 jobs:
@@ -64,6 +64,10 @@ jobs:
       - name: Refuse Aliyun bookstore host
         run: |
           set -euo pipefail
+          if [ -z "${{ env.DEPLOY_HOST }}" ]; then
+            echo "::error::repo 变量 DEPLOY_HOST 未设置。请到 Settings → Secrets and variables → Actions → Variables 新建 DEPLOY_HOST。"
+            exit 1
+          fi
           if [ "${{ env.DEPLOY_HOST }}" = "${{ env.FORBIDDEN_HOST }}" ]; then
             echo "::error::拒绝勘察阿里云 ${{ env.FORBIDDEN_HOST }}（szbolent.cn 书店，不归本仓管）"
             exit 1
@@ -74,7 +78,7 @@ jobs:
               exit 1
               ;;
           esac
-          echo "勘察目标: ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} （腾讯云门户，只读）"
+          echo "勘察目标: ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} （官网门户，只读）"
 
       - name: Setup SSH
         uses: shimataro/ssh-key-action@v2

@@ -5,7 +5,7 @@
 
     <section>
       <h2>1. 服务说明</h2>
-      <p>www.szbolent.cn（以下简称"本网站"）由深伯乐（深圳）科技有限公司运营，是一个智能化诗词鉴赏与数智企业服务门户。</p>
+      <p>www.szbolent.com（以下简称"本网站"）由深伯乐（深圳）科技有限公司运营，是一个智能化诗词鉴赏与数智企业服务门户。</p>
     </section>
 
     <section>
@@ -31,7 +31,7 @@
     <section>
       <h2>6. 法律适用</h2>
       <p>本协议受中华人民共和国法律管辖。如对本协议有任何疑问，请通过以下方式联系我们：</p>
-      <p>邮箱：legal@szbolent.com.cn</p>
+      <p>邮箱：legal@szbolent.com</p>
     </section>
   </div>
 </template>

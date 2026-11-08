@@ -7,7 +7,7 @@
  * 1. 安装 Contact Form 7 插件
  * 2. 后台 → 联系 → 新建表单
  * 3. 将以下代码粘贴到「表单」标签页
- * 4. 将「邮件」标签页的收件人设置为 business@szbolent.com.cn
+ * 4. 将「邮件」标签页的收件人设置为 business@szbolent.com
  */
 
 /**
@@ -73,7 +73,7 @@
 /**
  * 邮件模板（粘贴到 CF7「邮件」标签页）
  *
- * 收件人: business@szbolent.com.cn
+ * 收件人: business@szbolent.com
  * 发件人: [your-name] <[your-email]>
  * 主题: 新咨询 - [your-service] - [your-name]
  * 正文:

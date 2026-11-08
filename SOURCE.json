@@ -1,7 +1,7 @@
 {
   "project": "szbolent-portal",
-  "domain": "www.szbolent.cn",
-  "portal_tld": "cn（个人备案 · 内容站）",
+  "domain": "www.szbolent.com",
+  "portal_tld": "com（企业备案 · 官网/商业）",
   "api_domain": "api.genz.ltd（已部署 · Looma Flask API）",
   "narrative": "bolent-content",
   "canonical_delivery": "/Users/jason/THOMAS/variety",

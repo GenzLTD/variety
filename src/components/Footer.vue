@@ -54,7 +54,7 @@
               </li>
               <li>
                 <Mail :size="18" class="icon" />
-                <span>hello@szbolent.com.cn</span>
+                <span>hello@szbolent.com</span>
               </li>
             </ul>
           </div>

@@ -22,14 +22,14 @@
  *   H. genre 筛选点了之后仍有内容（筛选不是「一点就空」）
  *
  * 用法：
- *   npm run verify:book                                    # 默认线上 https://szbolent.com.cn/blog
+ *   npm run verify:book                                    # 默认线上 https://szbolent.com/blog
  *   SITE_URL=http://localhost:4173/ npm run verify:book    # 本地 preview 也适用
  *   BOOKSTORE_HOST=szbolent.cn MIN_ITEMS=5 npm run verify:book
  * 退出码：0 = 全通过；1 = 有断言不过
  */
 import { chromium } from 'playwright'
 
-const SITE = (process.env.SITE_URL || 'https://szbolent.com.cn/').replace(/\/+$/, '')
+const SITE = (process.env.SITE_URL || 'https://szbolent.com/').replace(/\/+$/, '')
 const PAGE_PATH = process.env.BOOKSTORE_PATH || '/blog'
 const TARGET = `${SITE}${PAGE_PATH}`
 const FEED_MARK = process.env.FEED_MARK || '/wp-json/bookstore/v1/feed'

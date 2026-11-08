@@ -120,7 +120,9 @@ cat > /etc/nginx/conf.d/bolent-wp.conf <<'NGINX'
 server {
     listen 80;
     listen [::]:80;
-    server_name 47.115.168.107 szbolent.cn www.szbolent.cn szbolent.com.cn www.szbolent.com.cn bolent.cn www.bolent.cn;
+    # szbolent.com.cn / www.szbolent.com.cn 已于 v0.5.0（2026-11-08）停用并从官网契约移除；
+    # 这里也一并删掉，不要改写成 szbolent.com —— 官网由另一台机器（vars.DEPLOY_HOST）服务。
+    server_name 47.115.168.107 szbolent.cn www.szbolent.cn bolent.cn www.bolent.cn;
 
     client_max_body_size 64m;
 
