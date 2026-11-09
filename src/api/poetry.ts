@@ -8,7 +8,7 @@
  */
 import axios from 'axios'
 
-/** 生产填 https://api.genz.ltd；本地留空走 vite proxy /v1 → :5200 */
+/** 留空走同源 /v1。生产由门户 nginx 转到本机 127.0.0.1:5200。 */
 const LOOMA_BASE = (import.meta.env.VITE_LOOMA_API_BASE ?? '').replace(/\/$/, '')
 
 function v1(path: string): string {

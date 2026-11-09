@@ -307,12 +307,12 @@ export function sanitizeHTML(html: string): string {
 }
 
 /**
- * 书店 feed（szbolent.cn `bookstore/v1`）
+ * 书店 feed（同源 /wp-json/bookstore/v1，由门户 nginx 转到法兰克福）
  * 只取节选：id / title / genre / excerpt（诗句数组）/ url。
  * 卡片跳转 url 回原文，不请求 `/poem/<id>` 全文。
  */
 
-const SHELF_API_BASE = import.meta.env.VITE_SHELF_API_BASE || 'https://szbolent.cn/wp-json/bookstore/v1'
+const SHELF_API_BASE = import.meta.env.VITE_SHELF_API_BASE || '/wp-json/bookstore/v1'
 
 export interface ShelfFeedItem {
   id: string
