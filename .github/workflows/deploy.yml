@@ -1,19 +1,17 @@
-name: Deploy portal to Tencent (szbolent.com.cn)
+name: Deploy portal (szbolent.com)
 
-# 橱窗只发腾讯云。szbolent-portal 已废弃，门户由本仓（variety）接替。
+# 橱窗发到新机，按域名 szbolent.com / www.szbolent.com 接入。
+# 不抢 80 的 default_server（那是 looma 宿主）。不装 443：备案证书尚未签发。
 #
-# 禁止发布到阿里云 47.115.168.107。那台机器是 szbolent.cn 个人书店
-# （WordPress）。本工作流若再把门户 SPA 和 nginx 装上去，会用 location /
-# 盖住博客首页和 /poem/ 原文页。书店的正文、容器、证书都不由这里动。
+# 禁止：
+#   - 阿里云 47.115.168.107（szbolent.cn 书店）
+#   - 旧腾讯云 1.14.202.161（szbolent.com.cn 橱窗，已退役）
+# 主机、用户、密钥、指纹走 GitHub variables/secrets，仓库里不写裸 IP。
 #
-# 发布面：构建门户 → 只把 dist 换到腾讯云 1.14.202.161 的
-# /var/www/szbolent-portal/dist。不改书店机，不重建 WP，不装阿里云 nginx。
-# nginx 以腾讯云机器上的站点为准，本工作流不装 nginx 配置：
-# 原先的 install_nginx_config 开关指向仓库里并不存在的 nginx-tencent-portal.conf，
-# 勾上必定失败、不勾也照样发静态文件 —— 是纯噪音（issue #10），已删除。
+# 旧的 contracts/entry.json → nginx.conf 仍是书店机那份生成物。
+# 本工作流不安装它。新机站点是 deploy/nginx/szbolent.com.conf。
 #
-# dry_run：手动触发默认 true，只做「构建 + 构建期验收」，不 SSH、不 rsync、不切换。
-# 用来在真正发布前预演一遍流水线。push tag 触发时恒为 false（真发布）。
+# dry_run：手动触发默认 true，只构建，不 SSH。push tag v* 恒为真发布。
 
 on:
   push:
@@ -22,25 +20,16 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: '只构建 + 构建期验收，不上传不切换（默认 true：先预演）'
+        description: '只构建 + 构建期验收，不上传不切换（默认 true）'
         type: boolean
         default: true
 
 concurrency:
-  group: deploy-tencent-portal
+  group: deploy-szbolent-com
   cancel-in-progress: false
 
 permissions:
   contents: read
-
-env:
-  SSH_OPTS: '-o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o BatchMode=yes -o StrictHostKeyChecking=no'
-  # 写死。不要从 DEPLOY_HOST 回落到 47.115.168.107。
-  DEPLOY_HOST: 1.14.202.161
-  DEPLOY_USER: ubuntu
-  FORBIDDEN_HOST: 47.115.168.107
-  PORTAL_DIST: /var/www/szbolent-portal/dist
-  SITE_URL: https://www.szbolent.com.cn/
 
 jobs:
   deploy:
@@ -52,29 +41,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Refuse Aliyun bookstore host
-        run: |
-          set -euo pipefail
-          if [ "${{ env.DEPLOY_HOST }}" = "${{ env.FORBIDDEN_HOST }}" ]; then
-            echo "::error::拒绝发布到阿里云 ${{ env.FORBIDDEN_HOST }}（szbolent.cn 个人书店）"
-            exit 1
-          fi
-          case "${{ env.DEPLOY_HOST }}" in
-            47.115.*)
-              echo "::error::拒绝发布到阿里云网段 ${{ env.DEPLOY_HOST }}"
-              exit 1
-              ;;
-          esac
-          echo "发布目标: ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} （腾讯云橱窗）"
-
-      # dry_run 只在手动触发时有意义；push tag 时 inputs.dry_run 为空 → 视为 false（真发布）
       - name: Resolve dry-run
         id: dry
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
             echo "flag=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::dry_run=true —— 本轮只构建 + 构建期验收，不上传不切换"
+            echo "::notice::dry_run=true —— 本轮只构建，不上传不切换"
           else
             echo "flag=false" >> "$GITHUB_OUTPUT"
           fi
@@ -91,9 +64,6 @@ jobs:
       - name: Contract sync gate (gen-entry --check)
         run: node scripts/gen-entry.mjs --check
 
-      # 菜单种子漂移门禁（issue #14）：种子 SQL 改了而 src/menus/*.json 没重生成 → 这里红。
-      # test:unit 只断言已提交的 JSON 值，比对不了种子，挡不住漂移；src/menus/index.ts
-      # 与 tests/unit/menus.test.ts 注释里声称的「CI --check 门禁」即本步。
       - name: Menu seed sync gate (gen-menus --check)
         run: npm run menus:check
 
@@ -110,99 +80,18 @@ jobs:
           grep -q 'id="app"' dist/index.html || { echo "::error::dist/index.html 里没有 Vue 挂载点"; exit 1; }
           ls dist/assets/*.js >/dev/null 2>&1 || { echo "::error::dist/assets 下没有 js 产物"; exit 1; }
 
-      # 构建期验收：菜单已烘焙进 dist，这里直接在产物上断言导航项，
-      # 不用等发布到线上才发现导航空（把 verify:nav 的渲染层断言前移）。
       - name: Verify baked menu in build output
         run: npm run test:unit
 
       - name: Dry run summary
         if: steps.dry.outputs.flag == 'true'
-        run: |
-          echo "::notice::dry_run 结束 —— 构建与构建期验收均通过，未上传、未切换。确认要发布请再跑一次并把 dry_run 设为 false"
+        run: echo "::notice::dry_run 结束。确认要发布请再跑一次并把 dry_run 设为 false，或推送 v* 标签"
 
-      - name: Setup SSH
-        if: steps.dry.outputs.flag != 'true'
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
-          config: |
-            Host deploy
-              HostName ${{ env.DEPLOY_HOST }}
-              User ${{ env.DEPLOY_USER }}
-
-      - name: Publish portal dist (atomic swap)
-        id: publish
-        if: steps.dry.outputs.flag != 'true'
-        run: |
-          set -euo pipefail
-          ssh $SSH_OPTS deploy "mkdir -p ${{ env.PORTAL_DIST }}.new"
-          rsync -az --delete -e "ssh $SSH_OPTS" dist/ deploy:${{ env.PORTAL_DIST }}.new/
-          ssh $SSH_OPTS deploy 'bash -s' <<REMOTE
-          set -euo pipefail
-          D="${{ env.PORTAL_DIST }}"; N="\${D}.new"; P="\${D}.prev"
-          test -s "\$N/index.html" || { echo "::error::新产物没传完整"; exit 1; }
-          rm -rf "\$P"
-          if [ -d "\$D" ]; then mv "\$D" "\$P"; fi
-          mv "\$N" "\$D"
-          chmod -R a+rX "\$D"
-          test -s "\$D/index.html" || { echo "::error::切换后 index.html 不见了"; exit 1; }
-          echo "门户产物已发布到腾讯云: \$(find "\$D" -type f | wc -l) 个文件"
-          REMOTE
-
-      - name: Verify showcase homepage
-        if: steps.dry.outputs.flag != 'true'
-        run: |
-          set -euo pipefail
-          code=$(curl -sS -o /tmp/portal.html -w '%{http_code}' --max-time 20 "${{ env.SITE_URL }}")
-          echo "GET ${{ env.SITE_URL }} → $code"
-          test "$code" = "200" || { echo "::error::橱窗首页不是 200"; exit 1; }
-          grep -q 'id="app"' /tmp/portal.html || { echo "::error::橱窗首页不是门户 SPA"; exit 1; }
-
-      # 上面那一步只看状态码：200 + 有挂载点就算过 —— 这正是前两次假绿的口子
-      # （导航空、书店降级成「暂无文章」，页面照样 200）。这一步改成真开浏览器：
-      #   verify:nav  门户顶部导航必须渲染出预期菜单项（/v1/menus 通、菜单真的接上）
-      #   verify:book 书店栏目必须渲染出卡片，且标题能在 feed 里对上（不是写死假数据）
-      # 不要加 continue-on-error：这里红了说明用户真的看不到东西，就要它挡住发版。
-      - name: Verify showcase in a real browser (nav + bookstore)
-        id: verify_browser
+      - name: Publish szbolent.com on the new machine
         if: steps.dry.outputs.flag != 'true'
         env:
-          # 门户 canonical 是 szbolent.com.cn；SITE_URL 那个 www 别名保持不变以免影响上面的旧步骤
-          VERIFY_SITE: https://szbolent.com.cn/
-        run: |
-          set -euo pipefail
-          npx playwright install --with-deps chromium || npx playwright install chromium
-          export SITE_URL="$VERIFY_SITE"
-          for script in verify:nav verify:book; do
-            if npm run "$script"; then
-              echo "::notice::$script 通过"
-              continue
-            fi
-            echo "::warning::$script 首轮没过，20s 后重试一次（刚切换静态产物的抖动留给第二次机会）"
-            sleep 20
-            npm run "$script" || {
-              echo "::error::用户可见层验收失败：$script —— 这是真实的用户可见故障，不是 CI 抖动"
-              exit 1
-            }
-          done
-
-      # 上面验收红了就把 dist 换回上一版（issue #11：过去只报错不回滚，
-      # 线上停在坏产物上直到人工介入）。dist.prev 由 atomic swap 步骤留下。
-      - name: Rollback dist on failed verification
-        if: failure() && steps.dry.outputs.flag != 'true' && steps.publish.outcome == 'success'
-        run: |
-          set -euo pipefail
-          ssh $SSH_OPTS deploy 'bash -s' <<REMOTE
-          set -euo pipefail
-          D="${{ env.PORTAL_DIST }}"; P="\${D}.prev"; B="\${D}.bad.\$(date +%Y%m%d%H%M%S)"
-          if [ ! -d "\$P" ]; then
-            echo "::warning::没有 dist.prev 可回滚，保留现场待人工处理"
-            exit 0
-          fi
-          mv "\$D" "\$B"
-          mv "\$P" "\$D"
-          chmod -R a+rX "\$D"
-          test -s "\$D/index.html" || { echo "::error::回滚后 index.html 不见了"; exit 1; }
-          echo "已回滚到上一版产物（坏产物留作证据: \$B）"
-          REMOTE
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_FINGERPRINT: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+        run: ./scripts/ci-deploy-portal.sh
