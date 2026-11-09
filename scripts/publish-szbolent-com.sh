@@ -57,12 +57,20 @@ if ! sudo nginx -t; then
 fi
 sudo systemctl reload nginx
 
-portal=$(curl -sf -m 10 -H 'Host: szbolent.com' http://127.0.0.1/ || true)
-printf '%s' "$portal" | grep -q 'id="app"' || {
+portal_ok=""
+for _ in 1 2 3 4 5; do
+  portal=$(curl -sf -m 10 -H 'Host: szbolent.com' http://127.0.0.1/ || true)
+  if printf '%s' "$portal" | grep -q 'id="app"'; then
+    portal_ok=1
+    break
+  fi
+  sleep 1
+done
+if [ -z "$portal_ok" ]; then
   rollback_dist
   echo "FATAL: Host szbolent.com 不是门户 SPA" >&2
   exit 1
-}
+fi
 curl -sf -m 10 http://127.0.0.1/health | grep -q 'looma-backend' || {
   echo "FATAL: 默认站点不再是 looma 宿主" >&2
   exit 1
