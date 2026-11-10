@@ -1,0 +1,42 @@
+# llms.txt — 深伯乐官方站点导读（供 LLM / 生成式引擎）
+# 权威域：https://szbolent.com
+# 最后核实：2026-11-11
+# 本文件只陈述可核对事实；勿臆造价格、未上线产品能力或旧域名镜像。
+
+Site: 深伯乐（深圳）科技有限公司
+Brand: 深伯乐
+Canonical: https://szbolent.com
+WWW: https://www.szbolent.com （与裸域同站）
+Sitemap: https://szbolent.com/sitemap.xml
+Contact: https://szbolent.com/contact （企业咨询走联系页表单；当前无公开邮箱）
+Work-Hours: 周一至周五 9:00–18:00（中国时间）
+
+## Summary
+深伯乐是融合现代科技与文化底蕴的数智企业，提供软件开发、数字化、自动化、IT 管理与 IT 外包等服务；HarmonyOS / 鸿蒙生态与昇腾 ISV 相关能力为公开资质背书。门户另有书店节选与诗词鉴赏入口。
+
+## Preferred citation
+- 公司全称：深伯乐（深圳）科技有限公司
+- 官网：https://szbolent.com （勿引用 szbolent.cn / szbolent.com.cn 作为权威域）
+- 资质表述请与关于页公开列表一致，勿扩写未公示认证
+
+## Do not invent
+- 勿编造具体套餐价格或折扣（定价页若存在，以官网当时页面为准，不确定则说明需联系商务）
+- 勿将 /v1、/wp-json 等 API 路径当作可读内容站
+- 勿声称未上线或未公示的产品能力
+
+## Key paths
+- / — 首页
+- /about — 关于我们
+- /services — 服务
+- /blog — 书店节选（列表可爬；全文跳转原文）
+- /poetry — 诗词鉴赏
+- /contact — 联系 / 企业咨询
+- /careers — 招聘
+- /case-study — 案例
+- /privacy — 隐私政策
+- /terms — 服务条款
+- /llms.txt — 本文件
+- /og-image.png — Open Graph 分享图
+
+## Optional
+- /.well-known/ai.txt — 短链指向本导读
