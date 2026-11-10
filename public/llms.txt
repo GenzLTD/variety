@@ -8,10 +8,8 @@ Brand: 深伯乐
 Canonical: https://szbolent.com
 WWW: https://www.szbolent.com （与裸域同站）
 Sitemap: https://szbolent.com/sitemap.xml
-Contact-Email: hello@szbolent.com.cn
-Support-Email: support@szbolent.com.cn
+Contact: https://szbolent.com/contact （企业咨询走联系页表单；当前无公开邮箱）
 Work-Hours: 周一至周五 9:00–18:00（中国时间）
-ICP: 粤ICP备2026134984号-1
 
 ## Summary
 深伯乐是融合现代科技与文化底蕴的数智企业，提供软件开发、数字化、自动化、IT 管理与 IT 外包等服务；HarmonyOS / 鸿蒙生态与昇腾 ISV 相关能力为公开资质背书。门户另有书店节选与诗词鉴赏入口。
