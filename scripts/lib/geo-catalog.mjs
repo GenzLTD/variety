@@ -1,8 +1,13 @@
 /**
  * GEO 共享目录 — sitemap / JSON-LD / verify 同源事实
  *
- * 只收录门户已公示内容：服务 slug、公开路径、可核对 FAQ。
+ * 只收录门户已公示内容：服务 slug（schema）、公开路径、可核对 FAQ。
  * 禁止写入：公开邮箱、未覆盖 .com 的 ICP、sameAs、臆造价格。
+ *
+ * Sitemap 纪律（P2 审阅 follow-up）：
+ *   只收「已有 prerender 壳」的路径。无壳 URL 会被 nginx fallback 到首页壳，
+ *   canonical 指向首页，与 sitemap/Service.url 信号矛盾。
+ *   6× /services/:slug、/case-study、/pricing（icpRisk）等 P3 有壳后再收录。
  */
 export const SITE = (process.env.SITE_URL || process.env.VITE_SITE_URL || 'https://szbolent.com').replace(
   /\/+$/,
@@ -11,7 +16,7 @@ export const SITE = (process.env.SITE_URL || process.env.VITE_SITE_URL || 'https
 export const ORG = '深伯乐（深圳）科技有限公司'
 export const BRAND = '深伯乐'
 
-/** 与 Services.vue / ServiceDetail.vue / Footer 一致的服务清单 */
+/** 与 Services.vue / ServiceDetail.vue / Footer 一致的服务清单（供 JSON-LD；暂不进 sitemap） */
 export const SERVICES = [
   {
     slug: 'outsourcing',
@@ -72,23 +77,28 @@ export const FAQ_ITEMS = [
   },
 ]
 
-/** 静态核心路径（不含服务详情；服务由 SERVICES 展开） */
+/**
+ * 已有 prerender 壳的路径（P1：8 核心 + /blog）= sitemap 白名单。
+ * 故意不含：/case-study、/pricing（icpRisk）、/services/:slug（待 P3 薄壳）。
+ */
 export const CORE_SITEMAP_PATHS = [
   { path: '/', changefreq: 'weekly', priority: '1.0' },
   { path: '/about', changefreq: 'monthly', priority: '0.8' },
   { path: '/services', changefreq: 'monthly', priority: '0.9' },
   { path: '/blog', changefreq: 'weekly', priority: '0.8' },
-  { path: '/case-study', changefreq: 'monthly', priority: '0.7' },
   { path: '/careers', changefreq: 'monthly', priority: '0.6' },
   { path: '/contact', changefreq: 'monthly', priority: '0.7' },
-  { path: '/pricing', changefreq: 'monthly', priority: '0.5' },
   { path: '/privacy', changefreq: 'yearly', priority: '0.3' },
   { path: '/terms', changefreq: 'yearly', priority: '0.3' },
   { path: '/poetry', changefreq: 'weekly', priority: '0.7' },
 ]
 
+/** 有壳路径集合 — 菜单烘焙 path 仅在此交集内才进 sitemap */
+export const SHELLED_PATHS = new Set(CORE_SITEMAP_PATHS.map((r) => r.path))
+
 /**
- * 合并烘焙菜单公开 path + 核心路径 + 服务详情
+ * 合并烘焙菜单公开 path（仅白名单有壳路径）+ 核心路径。
+ * 服务详情 slug 故意不收录，等 P3 prerender 壳落地。
  * @param {Array<{ path?: string, visibleTo?: string }> | null | undefined} menuItems
  */
 export function buildSitemapEntries(menuItems) {
@@ -103,21 +113,17 @@ export function buildSitemapEntries(menuItems) {
       if (!item || item.visibleTo === 'private') continue
       const path = normalizePath(item.path)
       if (!path || path.includes(':') || path.includes('*')) continue
+      // 无壳菜单项（如 /case-study）不抢跑进 sitemap
+      if (!SHELLED_PATHS.has(path)) continue
       if (!byPath.has(path)) {
         byPath.set(path, { path, changefreq: 'monthly', priority: '0.6' })
       }
     }
   }
 
-  for (const svc of SERVICES) {
-    const path = `/services/${svc.slug}`
-    byPath.set(path, { path, changefreq: 'monthly', priority: '0.7' })
-  }
-
   const rank = (p) => {
     if (p === '/') return 0
     if (p === '/services') return 1
-    if (p.startsWith('/services/')) return 2
     return 10
   }
 
@@ -131,11 +137,17 @@ export function buildSitemapEntries(menuItems) {
 function normalizePath(raw) {
   if (!raw || typeof raw !== 'string') return null
   let p = raw.trim()
-  if (!p.startsWith('/')) p = `/${p}`
+  if (!p.startsWith('/')) p = '/' + p
   if (p.length > 1) p = p.replace(/\/+$/, '')
   return p
 }
 
+/** 构建日 YYYY-MM-DD，默认 Asia/Shanghai（避免 UTC 慢一天） */
 export function isoDate(d = new Date()) {
-  return d.toISOString().slice(0, 10)
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d)
 }
