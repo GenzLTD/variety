@@ -23,19 +23,29 @@ const routes: RouteRecordRaw[] = [
         path: '',
         name: 'Home',
         component: () => import('@/views/Home.vue'),
-        meta: { title: '首页' }
+        meta: {
+          title: '首页',
+          description:
+            '深伯乐（深圳）科技有限公司 — 融合科技与人文的数智企业，提供软件开发、数字化、IT 管理及 AI 读诗；HarmonyOS 生态与昇腾 ISV 认证服务商。',
+        }
       },
       {
         path: 'about',
         name: 'About',
         component: () => import('@/views/About.vue'),
-        meta: { title: '关于我们' }
+        meta: {
+          title: '关于我们',
+          description: '深伯乐（深圳）科技有限公司简介：数智企业、HarmonyOS 生态与昇腾 ISV 认证服务商。',
+        }
       },
       {
         path: 'services',
         name: 'Services',
         component: () => import('@/views/Services.vue'),
-        meta: { title: '我们的服务' }
+        meta: {
+          title: '我们的服务',
+          description: '深伯乐服务：IT 外包、敏捷咨询、测试、项目管理、HarmonyOS 与昇腾方案。',
+        }
       },
       {
         path: 'services/:slug',
@@ -48,7 +58,10 @@ const routes: RouteRecordRaw[] = [
         path: 'blog',
         name: 'Blog',
         component: () => import('@/views/Blog.vue'),
-        meta: { title: '书店' }
+        meta: {
+          title: '书店',
+          description: '深伯乐书店节选：诗词与文化内容同源陈列于 szbolent.com/blog',
+        }
       },
       {
         path: 'blog/:slug',
@@ -73,20 +86,29 @@ const routes: RouteRecordRaw[] = [
         path: 'contact',
         name: 'Contact',
         component: () => import('@/views/Contact.vue'),
-        meta: { title: '联系我们' }
+        meta: {
+          title: '联系我们',
+          description: '联系深伯乐（深圳）科技有限公司：企业咨询请使用官网联系表单。',
+        }
       },
       // 诗词专区路由（Looma 管理，非 Page Engine）
       {
         path: 'poetry',
         name: 'Poetry',
         component: () => import('@/views/poetry/Layout.vue'),
-        meta: { title: '诗词鉴赏' },
+        meta: {
+          title: '诗词鉴赏',
+          description: '深伯乐诗词鉴赏入口：浏览、检索与 AI 读诗。',
+        },
         children: [
           {
             path: '',
             name: 'PoetryList',
             component: () => import('@/views/poetry/List.vue'),
-            meta: { title: '诗词列表' }
+            meta: {
+              title: '诗词列表',
+              description: '深伯乐诗词鉴赏入口：浏览、检索与 AI 读诗。',
+            }
           },
           {
             path: ':id',
@@ -121,13 +143,19 @@ const routes: RouteRecordRaw[] = [
         path: 'privacy',
         name: 'Privacy',
         component: () => import('@/views/Privacy.vue'),
-        meta: { title: '隐私政策' }
+        meta: {
+          title: '隐私政策',
+          description: '深伯乐（深圳）科技有限公司隐私政策摘要。',
+        }
       },
       {
         path: 'terms',
         name: 'Terms',
         component: () => import('@/views/Terms.vue'),
-        meta: { title: '用户协议' }
+        meta: {
+          title: '用户协议',
+          description: '深伯乐（深圳）科技有限公司网站服务条款。',
+        }
       },
       {
         path: ':pathMatch(.*)*',
@@ -139,7 +167,7 @@ const routes: RouteRecordRaw[] = [
   }
 ]
 
-import { seoConfig } from '@/config/company'
+import { applyPageSeo } from '@/composables/usePageSeo'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -184,8 +212,11 @@ router.beforeEach(async (to, _from, next) => {
     }
   }
 
-  const page = (to.meta.title as string) || seoConfig.defaultTitle
-  document.title = seoConfig.titleTemplate.replace('%s', page)
+  applyPageSeo({
+    title: (to.meta.title as string) || undefined,
+    description: (to.meta.description as string) || undefined,
+    path: to.path,
+  })
 
   if (to.meta.icpRisk === 'personal-domain-no-pricing' && import.meta.env.PROD) {
     console.warn(

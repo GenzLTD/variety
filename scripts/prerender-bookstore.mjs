@@ -4,9 +4,9 @@
  *
  * 选型（相对 tip 架构的最小改动）：
  *   Vite CSR SPA + nginx 同源反代 `/wp-json`，不做全站 SSR。
- *   构建后基于 dist/index.html 写出 dist/blog/index.html，把书店 feed
- *   的标题/节选嵌进 `#app` 初始 DOM。爬虫不执行 JS 时仍可读正文；
- *   浏览器 hydration 后由 Vue 接管（与现网 Blog.vue 一致）。
+ *   构建后基于干净的 vite dist/index.html 写出 dist/blog/index.html，
+ *   把书店 feed 的标题/节选嵌进 `#app`。须在 prerender-core 写首页之前跑，
+ *   以免底稿已被首页壳污染。爬虫无 JS 可读；hydration 后由 Vue 接管。
  *
  * 环境：
  *   SITE_URL              权威域（默认 https://szbolent.com）
@@ -25,6 +25,7 @@ import {
   isBolentShelfFeed,
   toBookstoreFeed,
 } from './lib/bolent-shelf-to-bookstore.mjs'
+import { escapeHtml, injectSeoAndBody } from './lib/prerender-html.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
@@ -35,14 +36,6 @@ const FEED_URL =
   process.env.BOOKSTORE_FEED_URL ||
   process.env.VITE_SHELF_FEED_URL ||
   `${SITE}/wp-json/bookstore/v1/feed?limit=200`
-
-function escapeHtml(s) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
 
 function rewriteAuthorityUrl(raw) {
   if (!raw) return `${SITE}/blog`
@@ -153,37 +146,6 @@ ${articles || '    <p>书店节选建设中。权威站点 https://szbolent.com/
 </main>`
 }
 
-function inject(html, body) {
-  let out = html
-  out = out.replace(/<title>[^<]*<\/title>/i, '<title>书店 | 深伯乐</title>')
-  out = out.replace(
-    /<meta name="description" content="[^"]*">/i,
-    '<meta name="description" content="深伯乐书店节选：诗词与文化内容同源陈列于 szbolent.com/blog">'
-  )
-  out = out.replace(
-    /<meta property="og:url" content="[^"]*">/i,
-    `<meta property="og:url" content="${SITE}/blog">`
-  )
-  out = out.replace(
-    /<meta property="og:title" content="[^"]*">/i,
-    '<meta property="og:title" content="书店 | 深伯乐">'
-  )
-  if (/rel="canonical"/i.test(out)) {
-    out = out.replace(/<link rel="canonical" href="[^"]*">/i, `<link rel="canonical" href="${SITE}/blog">`)
-  } else {
-    out = out.replace('</head>', `    <link rel="canonical" href="${SITE}/blog">\n  </head>`)
-  }
-
-  if (/<div id="app"><\/div>/i.test(out)) {
-    out = out.replace(/<div id="app"><\/div>/i, `<div id="app">${body}</div>`)
-  } else if (/<div id="app">/i.test(out)) {
-    out = out.replace(/<div id="app">[\s\S]*?<\/div>/i, `<div id="app">${body}</div>`)
-  } else {
-    out = out.replace('</body>', `${body}\n  </body>`)
-  }
-  return out
-}
-
 async function main() {
   const indexPath = join(DIST, 'index.html')
   if (!existsSync(indexPath)) {
@@ -192,7 +154,13 @@ async function main() {
   }
 
   const { items } = await loadFeed()
-  const html = inject(readFileSync(indexPath, 'utf8'), buildBody(items))
+  const html = injectSeoAndBody(readFileSync(indexPath, 'utf8'), {
+    title: '书店 | 深伯乐',
+    description: '深伯乐书店节选：诗词与文化内容同源陈列于 szbolent.com/blog',
+    canonical: `${SITE}/blog`,
+    ogTitle: '书店 | 深伯乐',
+    body: buildBody(items),
+  })
   const outDir = join(DIST, 'blog')
   mkdirSync(outDir, { recursive: true })
   const outFile = join(outDir, 'index.html')
