@@ -1,46 +1,26 @@
 <template>
   <div class="home-page">
-    <!-- ════════════════════════════════════════════════════
-         Hero — HarmonyOS 生态服务商
-         ════════════════════════════════════════════════════ -->
-    <section class="hero-section">
-      <div class="hero-bg">
-        <div class="hero-glow hero-glow--1"></div>
-        <div class="hero-glow hero-glow--2"></div>
-        <div class="hero-grid"></div>
-      </div>
-      <div class="container">
-        <div class="hero-content" data-aos="fade-up">
-          <!-- 生态认证徽章 -->
-          <div class="hero-badges">
-            <span class="badge" v-for="badge in partnerBadges" :key="badge.text">
-              <component :is="badge.icon" :size="16" stroke-width="2" />
-              {{ badge.text }}
-            </span>
-          </div>
-
-          <h1 class="hero-title">HarmonyOS <span class="hero-highlight">生态服务商</span></h1>
-          <p class="hero-subtitle">智能终端 · 应用开发 · 解决方案</p>
-          <p class="hero-description">{{ company.tagline }}</p>
-
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">深圳 · 企业软件与鸿蒙工程</p>
+          <h1>以工程精度，<br><em>把系统交付出去</em></h1>
+          <p class="lede">{{ company.tagline }}</p>
+          <p class="certs">{{ company.certifications.join('  /  ') }}</p>
           <div class="hero-actions">
-            <router-link to="/case-study" class="btn btn-harmony btn-large">
-              <Zap :size="18" />
-              查看案例
-            </router-link>
-            <router-link to="/blog" class="btn btn-outline-light btn-large">
-              书店
-            </router-link>
-            <router-link to="/contact" class="btn btn-outline-light btn-large">
-              联系我们
-            </router-link>
+            <router-link to="/services" class="btn btn-primary btn-large">看服务</router-link>
+            <router-link to="/case-study" class="btn btn-outline btn-large">看案例</router-link>
           </div>
         </div>
-      </div>
-
-      <!-- 滚动提示 -->
-      <div class="scroll-indicator" data-aos="fade-up" data-aos-delay="800">
-        <ChevronDown :size="20" />
+        <ol class="hero-list">
+          <li v-for="(item, i) in harmonyCapabilities.slice(0, 4)" :key="item.title">
+            <span>{{ String(i + 1).padStart(2, '0') }}</span>
+            <div>
+              <strong>{{ item.title }}</strong>
+              <p>{{ item.description }}</p>
+            </div>
+          </li>
+        </ol>
       </div>
     </section>
 
@@ -90,12 +70,12 @@
           <div
             v-for="(service, index) in services"
             :key="service.slug"
-            class="service-card card"
+            class="service-card"
             data-aos="fade-up"
             :data-aos-delay="index * 80"
           >
-            <div class="service-icon" :style="{ background: service.gradient }">
-              <component :is="service.icon" :size="32" stroke-width="1.5" color="#fff" />
+            <div class="service-icon">
+              <component :is="service.icon" :size="22" stroke-width="1.5" />
             </div>
             <h3 class="service-title">{{ service.title }}</h3>
             <p class="service-description">{{ service.description }}</p>
@@ -194,32 +174,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { companyInfo as company } from '@/config/company'
 import {
   Database, Code2, Bot, Settings, Rocket, Globe,
   Target, Sparkles, Wrench, HeartHandshake,
   Smartphone, Cpu, Atom, Package, GitMerge,
   Layers, ShoppingBag, Cloud, BrainCircuit,
-  Zap, ArrowRight, ChevronDown, MessageCircle,
-  CheckCircle, Shield, Award,
+  ArrowRight, MessageCircle,
 } from 'lucide-vue-next'
-import type { Component } from 'vue'
-
-// ─── 生态认证徽章（真源：company.certifications）───
-const badgeIconByLabel: Record<string, Component> = {
-  'HarmonyOS 开发者': CheckCircle,
-  '鸿蒙生态合作伙伴': Shield,
-  'OpenHarmony 贡献者': Award,
-  '昇腾 ISV 认证服务商': BrainCircuit,
-}
-
-const partnerBadges = computed(() =>
-  company.certifications.map((text) => ({
-    text,
-    icon: badgeIconByLabel[text] ?? Award,
-  })),
-)
 
 // ─── 鸿蒙全栈能力（含昇腾 AI）───
 const harmonyCapabilities = ref([
@@ -350,7 +313,7 @@ const features = ref([
   {
     icon: Sparkles,
     title: '卓越品质',
-    description: '工程级精度交付，代码评审覆盖率 > 85%，测试覆盖率 > 80%',
+    description: '评审和测试写进交付过程，不把半成品交给客户',
   },
   {
     icon: Wrench,
@@ -366,566 +329,285 @@ const features = ref([
 </script>
 
 <style scoped lang="scss">
-/* ══════════════════════════════════════════════
-   Shared Section Styles
-   ══════════════════════════════════════════════ */
-.section-header-center {
-  text-align: center;
-  margin-bottom: 64px;
+.home-page {
+  background: var(--bolent-bg-warm);
+  color: var(--bolent-ink);
 }
 
-.section-tag {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 2.5px;
-  color: var(--bolent-primary);
-  background: var(--bolent-primary-50);
-  padding: 6px 16px;
-  border-radius: var(--bolent-radius-pill);
+.hero {
+  padding: 72px 0 64px;
+  border-bottom: 1px solid var(--bolent-border);
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 64px;
+  align-items: end;
+}
+
+.eyebrow {
+  font-family: var(--bolent-font-en);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bolent-accent-dark);
   margin-bottom: 20px;
 }
 
-.section-heading {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: var(--bolent-ink);
+.hero-copy h1 {
+  font-family: var(--bolent-font-serif);
+  font-size: clamp(40px, 5vw, 64px);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 20px;
+
+  em {
+    font-style: normal;
+    color: var(--bolent-primary);
+  }
+}
+
+.lede {
+  font-size: 18px;
+  max-width: 36rem;
+  color: var(--bolent-text);
   margin-bottom: 16px;
 }
 
-.section-lead {
-  font-size: 1.125rem;
-  color: var(--bolent-text-secondary);
-  max-width: 600px;
-  margin: 0 auto;
-  line-height: 1.7;
+.certs {
+  font-size: 13px;
+  color: var(--bolent-text-muted);
+  margin-bottom: 32px;
 }
 
-/* ══════════════════════════════════════════════
-   Hero
-   ══════════════════════════════════════════════ */
-.hero-section {
-  position: relative;
-  min-height: 100vh;
+.hero-actions {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(160deg, #0A0E27 0%, #111640 30%, #0E2A4A 60%, #0A4F4C 100%);
-  overflow: hidden;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 
-  .hero-bg {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-  }
+.hero-list {
+  list-style: none;
+  margin: 0;
+  background: var(--bolent-ink);
+  color: #f4f1ea;
+  padding: 8px 28px;
 
-  .hero-glow {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.3;
-
-    &--1 {
-      width: 600px;
-      height: 600px;
-      background: radial-gradient(circle, rgba(26, 115, 232, 0.4), transparent 70%);
-      top: -200px;
-      right: -100px;
-      animation: glowPulse 8s ease-in-out infinite;
-    }
-
-    &--2 {
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, rgba(107, 78, 255, 0.3), transparent 70%);
-      bottom: -150px;
-      left: -100px;
-      animation: glowPulse 8s ease-in-out infinite 3s;
-    }
-  }
-
-  .hero-grid {
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size: 60px 60px;
-  }
-
-  .container {
-    position: relative;
-    z-index: 1;
-  }
-
-  .hero-content {
-    text-align: center;
-    color: #fff;
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 40px 20px;
-
-    /* 覆盖全局 h1/p 的深色墨色（main.scss），否则暗色 hero 上几乎不可见 */
-    h1, h2, h3, h4, h5, h6, p {
-      color: inherit;
-    }
-  }
-
-  .hero-badges {
-    display: flex;
+  li {
+    display: grid;
+    grid-template-columns: 36px 1fr;
     gap: 12px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 32px;
+    padding: 18px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 18px;
-      border-radius: var(--bolent-radius-pill);
-      font-size: 13px;
-      font-weight: 500;
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: rgba(255, 255, 255, 0.9);
-      transition: all 0.3s ease;
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.18);
-        border-color: rgba(255, 255, 255, 0.3);
-        transform: translateY(-2px);
-      }
-    }
+    &:last-child { border-bottom: 0; }
   }
 
-  .hero-title {
-    font-size: clamp(2.5rem, 6vw, 4.5rem);
-    font-weight: 800;
-    line-height: 1.15;
-    margin-bottom: 20px;
-    letter-spacing: -0.02em;
-    color: #fff;
-
-    .hero-highlight {
-      background: linear-gradient(135deg, #7EB6F6, #C4B5FD);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
+  span {
+    font-family: var(--bolent-font-en);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--bolent-accent-light);
+    padding-top: 4px;
   }
 
-  .hero-subtitle {
-    font-size: 1.35rem;
+  strong {
+    display: block;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.8);
-    margin-bottom: 12px;
-    letter-spacing: 4px;
+    margin-bottom: 4px;
   }
 
-  .hero-description {
-    font-size: 1.15rem;
-    color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 48px;
-    line-height: 1.7;
-  }
-
-  .hero-actions {
-    display: flex;
-    gap: 20px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .scroll-indicator {
-    position: absolute;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: rgba(255, 255, 255, 0.35);
-    animation: scrollBounce 2s ease-in-out infinite;
+  p {
+    margin: 0;
+    color: rgba(244, 241, 234, 0.72);
+    font-size: 14px;
+    line-height: 1.6;
   }
 }
 
-/* ─── Harmony Button ─── */
-.btn-harmony {
-  background: linear-gradient(135deg, #1A73E8, #6B4EFF);
-  color: #fff;
-  border: none;
-
-  &:hover {
-    box-shadow: 0 8px 32px rgba(26, 115, 232, 0.4);
-    transform: translateY(-3px);
-    color: #fff;
-  }
-
-  &:active {
-    transform: scale(0.97);
-  }
+.section-header-center {
+  text-align: left;
+  max-width: 40rem;
+  margin-bottom: 40px;
 }
 
-.btn-outline-light {
-  background: transparent;
-  border: 1.5px solid rgba(255, 255, 255, 0.65);
-  color: #fff;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.9);
-    color: #fff;
-  }
+.section-tag {
+  display: block;
+  font-family: var(--bolent-font-en);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  color: var(--bolent-accent-dark);
+  margin-bottom: 10px;
 }
 
-/* ══════════════════════════════════════════════
-   HarmonyOS Section
-   ══════════════════════════════════════════════ */
-.harmony-section {
-  background: linear-gradient(180deg, var(--harmony-bg), #fff);
-
-  .section-tag {
-    color: var(--harmony-primary);
-    background: rgba(26, 115, 232, 0.08);
-  }
-
-  .harmony-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 28px;
-  }
-
-  .harmony-card {
-    background: #fff;
-    border-radius: var(--bolent-radius-lg);
-    padding: 36px 28px;
-    box-shadow: var(--bolent-shadow);
-    border: 1px solid transparent;
-    transition: var(--bolent-transition);
-
-    &:hover {
-      box-shadow: var(--harmony-card-shadow);
-      border-color: rgba(26, 115, 232, 0.15);
-      transform: translateY(-4px);
-
-      .harmony-card-icon {
-        background: var(--harmony-gradient);
-        svg { color: #fff; }
-      }
-    }
-
-    .harmony-card-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 14px;
-      background: var(--harmony-gradient-soft);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 20px;
-      transition: var(--bolent-transition);
-      color: var(--harmony-primary);
-    }
-
-    .harmony-card-title {
-      font-size: 1.15rem;
-      font-weight: 700;
-      margin-bottom: 10px;
-      color: var(--bolent-ink);
-    }
-
-    .harmony-card-desc {
-      font-size: 0.95rem;
-      color: var(--bolent-text-secondary);
-      line-height: 1.65;
-      margin: 0;
-    }
-  }
+.section-heading {
+  font-family: var(--bolent-font-serif);
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 500;
+  margin-bottom: 12px;
 }
 
-/* ══════════════════════════════════════════════
-   Services Section
-   ══════════════════════════════════════════════ */
-.services-section {
-  .services-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 28px;
-  }
-
-  .service-card {
-    padding: 36px 28px;
-    cursor: default;
-
-    .service-icon {
-      width: 64px;
-      height: 64px;
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 24px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-      transition: var(--bolent-transition);
-    }
-
-    &:hover .service-icon {
-      transform: scale(1.08);
-    }
-
-    .service-title {
-      font-size: 1.2rem;
-      font-weight: 700;
-      margin-bottom: 12px;
-      color: var(--bolent-ink);
-    }
-
-    .service-description {
-      font-size: 0.95rem;
-      color: var(--bolent-text-secondary);
-      line-height: 1.65;
-      margin-bottom: 20px;
-    }
-
-    .service-link {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--bolent-primary);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: gap 0.3s;
-
-      &:hover { gap: 10px; }
-    }
-  }
+.section-lead {
+  margin: 0;
+  color: var(--bolent-text-secondary);
 }
 
-/* ══════════════════════════════════════════════
-   Cases Section
-   ══════════════════════════════════════════════ */
-.cases-section {
-  .cases-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 28px;
-  }
-
-  .case-card {
-    background: #fff;
-    border-radius: var(--bolent-radius-lg);
-    overflow: hidden;
-    box-shadow: var(--bolent-shadow);
-    transition: var(--bolent-transition);
-
-    &:hover {
-      box-shadow: var(--bolent-shadow-lg);
-      transform: translateY(-4px);
-    }
-
-    .case-visual {
-      height: 160px;
-      background: var(--bolent-gradient-soft);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      color: var(--bolent-primary);
-
-      .case-tag {
-        position: absolute;
-        top: 14px;
-        right: 14px;
-        font-size: 11px;
-        font-weight: 600;
-        padding: 4px 12px;
-        border-radius: var(--bolent-radius-pill);
-        background: var(--bolent-primary);
-        color: #fff;
-      }
-    }
-
-    .case-body {
-      padding: 24px;
-
-      h3 {
-        font-size: 1.1rem;
-        font-weight: 700;
-        margin-bottom: 10px;
-        color: var(--bolent-ink);
-      }
-
-      p {
-        font-size: 0.9rem;
-        color: var(--bolent-text-secondary);
-        line-height: 1.6;
-        margin-bottom: 18px;
-      }
-
-      .case-metrics {
-        display: flex;
-        gap: 28px;
-        padding-top: 18px;
-        border-top: 1px solid var(--bolent-border-light);
-
-        .metric {
-          text-align: center;
-
-          .metric-value {
-            display: block;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--bolent-primary);
-          }
-
-          .metric-label {
-            font-size: 12px;
-            color: var(--bolent-text-muted);
-          }
-        }
-      }
-    }
-  }
-}
-
-/* ══════════════════════════════════════════════
-   Features Section
-   ══════════════════════════════════════════════ */
+.harmony-section,
+.services-section,
 .features-section {
-  .features-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 28px;
-  }
-
-  .feature-card {
-    text-align: center;
-    padding: 36px 24px;
-    background: var(--bolent-bg-soft);
-    border-radius: var(--bolent-radius-lg);
-    border: 1px solid transparent;
-    transition: var(--bolent-transition);
-
-    &:hover {
-      border-color: var(--bolent-primary-100);
-      box-shadow: var(--bolent-shadow-primary);
-      transform: translateY(-4px);
-
-      .feature-icon {
-        color: var(--bolent-primary);
-        transform: scale(1.1);
-      }
-    }
-
-    .feature-icon {
-      margin-bottom: 20px;
-      color: var(--bolent-text-muted);
-      transition: var(--bolent-transition);
-    }
-
-    h3 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin-bottom: 10px;
-      color: var(--bolent-ink);
-    }
-
-    p {
-      font-size: 0.9rem;
-      color: var(--bolent-text-secondary);
-      line-height: 1.6;
-      margin: 0;
-    }
-  }
+  background: #fff;
 }
 
-/* ══════════════════════════════════════════════
-   CTA
-   ══════════════════════════════════════════════ */
+.harmony-grid,
+.services-grid,
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--bolent-border);
+}
+
+.harmony-card,
+.service-card,
+.feature-card {
+  padding: 28px 8px 28px 0;
+  border-bottom: 1px solid var(--bolent-border);
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+
+  &:nth-child(odd) { padding-right: 32px; }
+  &:nth-child(even) { padding-left: 32px; border-left: 1px solid var(--bolent-border); }
+}
+
+.harmony-card-icon,
+.service-icon,
+.feature-icon {
+  color: var(--bolent-primary);
+  margin-bottom: 14px;
+}
+
+.service-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  background: var(--bolent-primary-50) !important;
+  border-radius: 0;
+}
+
+.harmony-card-title,
+.service-title,
+.feature-card h3 {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.harmony-card-desc,
+.service-description,
+.feature-card p {
+  margin: 0;
+  color: var(--bolent-text-secondary);
+  font-size: 15px;
+}
+
+.service-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  color: var(--bolent-primary-dark);
+  font-size: 14px;
+}
+
+.cases-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.case-card {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  background: #fff;
+  border: 1px solid var(--bolent-border);
+}
+
+.case-visual {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  background: var(--bolent-primary-50);
+  color: var(--bolent-primary-dark);
+}
+
+.case-tag {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.case-body {
+  padding: 20px 24px;
+
+  h3 { font-size: 20px; font-weight: 500; margin-bottom: 8px; }
+  p { margin: 0 0 16px; }
+}
+
+.case-metrics {
+  display: flex;
+  gap: 28px;
+}
+
+.metric-value {
+  display: block;
+  font-family: var(--bolent-font-serif);
+  font-size: 22px;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: var(--bolent-text-muted);
+}
+
 .cta-section {
-  background: var(--harmony-gradient);
-  padding: 120px 0;
-  position: relative;
-  overflow: hidden;
+  background: var(--bolent-ink);
+  color: #f4f1ea;
+  padding: 72px 0;
 
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(circle at 20% 50%, rgba(255,255,255,0.08) 0%, transparent 50%),
-      radial-gradient(circle at 80% 50%, rgba(255,255,255,0.05) 0%, transparent 50%);
-  }
-
-  .cta-content {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    color: #fff;
-    max-width: 600px;
-    margin: 0 auto;
-
-    h2 {
-      font-size: 2.5rem;
-      font-weight: 700;
-      margin-bottom: 16px;
-    }
-
-    p {
-      font-size: 1.2rem;
-      margin-bottom: 40px;
-      opacity: 0.85;
-      color: rgba(255,255,255,0.9);
-    }
-
-    .btn-harmony {
-      background: #fff;
-      color: var(--harmony-primary);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-
-      &:hover {
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-        transform: translateY(-4px);
-      }
-    }
+  h2, p { color: inherit; }
+  h2 {
+    font-family: var(--bolent-font-serif);
+    font-weight: 500;
+    margin-bottom: 12px;
   }
 }
 
-/* ══════════════════════════════════════════════
-   Animations
-   ══════════════════════════════════════════════ */
-@keyframes glowPulse {
-  0%, 100% { opacity: 0.25; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.15); }
+.cta-content .btn {
+  margin-top: 8px;
+  background: var(--bolent-accent);
+  color: var(--bolent-ink);
 }
 
-@keyframes scrollBounce {
-  0%, 100% { transform: translate(-50%, 0); opacity: 0.35; }
-  50% { transform: translate(-50%, 8px); opacity: 0.7; }
-}
+@media (max-width: 860px) {
+  .hero-grid,
+  .harmony-grid,
+  .services-grid,
+  .features-grid,
+  .case-card {
+    grid-template-columns: 1fr;
+  }
 
-/* ══════════════════════════════════════════════
-   Responsive
-   ══════════════════════════════════════════════ */
-@media (max-width: 1024px) {
-  .harmony-section .harmony-grid { grid-template-columns: repeat(2, 1fr); }
-  .services-section .services-grid { grid-template-columns: repeat(2, 1fr); }
-  .cases-section .cases-grid { grid-template-columns: repeat(2, 1fr); }
-  .features-section .features-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 768px) {
-  .section-heading { font-size: 2rem; }
-  .hero-section .hero-title { font-size: 2.2rem; }
-  .hero-section .hero-subtitle { letter-spacing: 2px; }
-  .cta-section { padding: 80px 0; }
-  .cta-section .cta-content h2 { font-size: 2rem; }
-
-  .harmony-section .harmony-grid { grid-template-columns: 1fr; }
-  .services-section .services-grid { grid-template-columns: 1fr; }
-  .cases-section .cases-grid { grid-template-columns: 1fr; }
-  .features-section .features-grid { grid-template-columns: 1fr; }
-
-  .hero-section .hero-badges { gap: 8px; }
-  .hero-section .hero-badges .badge { padding: 6px 14px; font-size: 12px; }
+  .harmony-card,
+  .service-card,
+  .feature-card {
+    &:nth-child(odd),
+    &:nth-child(even) {
+      padding: 24px 0;
+      border-left: 0;
+    }
+  }
 }
 </style>

@@ -9,16 +9,16 @@
         </p>
         <div class="hero-stats" data-aos="fade-up" data-aos-delay="200">
           <div class="stat-item">
-            <div class="stat-value">200+</div>
-            <div class="stat-label">团队成员</div>
+            <div class="stat-value">深圳</div>
+            <div class="stat-label">工作地点</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">15+</div>
-            <div class="stat-label">国家地区</div>
+            <div class="stat-value">工作日</div>
+            <div class="stat-label">9:00–18:00</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">98%</div>
-            <div class="stat-label">员工满意度</div>
+            <div class="stat-value">邮件</div>
+            <div class="stat-label">投递简历</div>
           </div>
         </div>
       </div>

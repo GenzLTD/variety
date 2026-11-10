@@ -152,9 +152,9 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  background: rgba(250, 248, 244, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--bolent-border);
   transition: var(--bolent-transition);
 
   &.header-scrolled {
@@ -175,7 +175,7 @@ onUnmounted(() => {
     transition: var(--bolent-transition);
 
     &:hover {
-      transform: translateY(-2px);
+      opacity: 0.8;
     }
 
     .logo-img {
@@ -269,8 +269,6 @@ onUnmounted(() => {
 
     &:hover {
       background: var(--bolent-primary-dark);
-      transform: translateY(-2px);
-      box-shadow: var(--bolent-shadow-primary);
     }
   }
 

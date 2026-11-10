@@ -21,7 +21,7 @@
             data-aos="fade-up"
             :data-aos-delay="index * 100"
           >
-            <div class="service-icon">{{ service.icon }}</div>
+            <div class="service-icon">{{ String(index + 1).padStart(2, '0') }}</div>
             <h3 class="service-title">{{ service.title }}</h3>
             <p class="service-description">{{ service.description }}</p>
             <ul class="service-features">
@@ -453,8 +453,11 @@ onMounted(() => {
       }
 
       .service-icon {
-        font-size: 56px;
+        font-family: var(--bolent-font-serif);
+        font-size: 28px;
+        color: var(--bolent-accent-dark);
         margin-bottom: 20px;
+        letter-spacing: 0.04em;
       }
 
       .service-title {

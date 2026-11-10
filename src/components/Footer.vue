@@ -72,7 +72,6 @@
             <router-link to="/terms">服务条款</router-link>
           </div>
         </div>
-        <p class="release-note">tag {{ releaseTag }}</p>
       </div>
     </div>
   </footer>
@@ -103,7 +102,6 @@ onMounted(() => {
 })
 
 const currentYear = computed(() => new Date().getFullYear())
-const releaseTag = __RELEASE_TAG__
 </script>
 
 <style scoped lang="scss">
@@ -228,14 +226,6 @@ const releaseTag = __RELEASE_TAG__
   .footer-bottom {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding: 24px 0;
-
-    .release-note {
-      margin: 10px 0 0;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 12px;
-      letter-spacing: 0.02em;
-      color: rgba(255, 255, 255, 0.45);
-    }
 
     .footer-bottom-content {
       display: flex;
