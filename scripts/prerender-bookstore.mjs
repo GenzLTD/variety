@@ -11,12 +11,12 @@
  * 环境：
  *   SITE_URL              权威域（默认 https://szbolent.com）
  *   BOOKSTORE_FEED_URL    feed 绝对地址（可指向 myblog bolent-shelf/v1；会自动适配）
- *   BOOKSTORE_FEED_FILE   本地 JSON 夹具（离线/CI 无上游时用；bolent-shelf 或 bookstore 皆可）
- *   BOOKSTORE_URL_MODE    poem（默认 /poem/<id>）| document | permalink
+ *   BOOKSTORE_FEED_FILE   显式本地 JSON 夹具（离线/CI）；未设置时 fetch 失败 → 空壳，不回落假诗
+ *   BOOKSTORE_URL_MODE    document（默认 /blog/<slug>）| permalink | poem
  *   BOOKSTORE_DEFAULT_GENRE  无分类时的 genre 缺省（默认「文」）
  *
- * 失败策略：上游不可达时仍写出带公司/书店导语的可爬壳（exit 0），
- * 优先回落 bolent-shelf 快照 → bookstore 夹具，避免 myblog/法兰克福短暂不可达阻断构建。
+ * 失败策略：上游不可达时写出带公司/书店导语的空列表壳（exit 0）。
+ * 夹具仅在显式 BOOKSTORE_FEED_FILE 时启用，避免污染生产构建。
  */
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -30,8 +30,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
 const DIST = join(ROOT, 'dist')
 const SITE = (process.env.SITE_URL || process.env.VITE_SITE_URL || 'https://szbolent.com').replace(/\/+$/, '')
-const BOLENT_SHELF_FIXTURE = join(ROOT, 'scripts/fixtures/bolent-shelf-feed.json')
-const BOOKSTORE_FIXTURE = join(ROOT, 'scripts/fixtures/bookstore-feed.json')
 const FEED_FILE = process.env.BOOKSTORE_FEED_FILE || ''
 const FEED_URL =
   process.env.BOOKSTORE_FEED_URL ||
@@ -85,7 +83,7 @@ function normalizeItems(raw) {
     .filter(Boolean)
 }
 
-function loadJsonFile(path) {
+function loadExplicitFixture(path) {
   if (!path || !existsSync(path)) return null
   try {
     const raw = JSON.parse(readFileSync(path, 'utf8'))
@@ -100,22 +98,14 @@ function loadJsonFile(path) {
   }
 }
 
-function loadFixtureChain() {
-  // 显式 BOOKSTORE_FEED_FILE 优先
-  if (FEED_FILE) {
-    const forced = loadJsonFile(resolve(FEED_FILE))
-    if (forced) return forced
-    console.warn(`[prerender-bookstore] BOOKSTORE_FEED_FILE 无效: ${FEED_FILE}`)
-  }
-  // myblog 挂着时：先 bolent-shelf 已提交快照，再 bookstore 夹具
-  return loadJsonFile(BOLENT_SHELF_FIXTURE) || loadJsonFile(BOOKSTORE_FIXTURE)
-}
-
 async function loadFeed() {
-  // 显式夹具优先（CI 离线 / 可复现验收）
+  // 夹具仅显式开启（CI / 本地离线验收）；生产默认绝不自动回落假诗
   if (FEED_FILE) {
-    const forced = loadFixtureChain()
+    const resolved = resolve(FEED_FILE)
+    const forced = loadExplicitFixture(resolved)
     if (forced) return forced
+    console.warn(`[prerender-bookstore] BOOKSTORE_FEED_FILE 无效: ${FEED_FILE}，写空壳`)
+    return { items: [], source: 'fallback' }
   }
 
   try {
@@ -131,13 +121,13 @@ async function loadFeed() {
       console.log(`[prerender-bookstore] feed ${FEED_URL} (${kind}) → ${items.length} items`)
       return { items, source: 'feed' }
     }
-    console.warn('[prerender-bookstore] feed 为空，尝试夹具')
+    console.warn('[prerender-bookstore] feed 为空，写空壳（需离线夹具请设 BOOKSTORE_FEED_FILE）')
   } catch (err) {
-    console.warn(`[prerender-bookstore] feed 不可达 (${err.message})，尝试夹具`)
+    console.warn(
+      `[prerender-bookstore] feed 不可达 (${err.message})，写空壳（需离线夹具请设 BOOKSTORE_FEED_FILE）`
+    )
   }
 
-  const fixture = loadFixtureChain()
-  if (fixture) return fixture
   return { items: [], source: 'fallback' }
 }
 
