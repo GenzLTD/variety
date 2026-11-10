@@ -91,9 +91,9 @@ export function register(params: { email: string; password: string; name?: strin
   return apiPost<{ token: string }>('/auth/register', params)
 }
 
-/** 获取当前用户信息 */
+/** 获取当前用户信息。106 上的核只提供 /v1/auth/profile，没有 /v1/auth/me。 */
 export function getMe<T = Record<string, unknown>>(): Promise<T> {
-  return apiGet<T>('/auth/me')
+  return apiGet<T>('/auth/profile')
 }
 
 /** 微信小程序登录绑定 */
@@ -103,14 +103,25 @@ export function wechatLogin(code: string): Promise<{ token: string }> {
 
 // ── 支付接口（P1 后接真实类型）──
 
-/** 创建支付订单 */
+/** 创建支付订单。106 的支付入口是 POST /v1/payment/checkout，没有 /v1/payment/create。 */
 export function createOrder(params: Record<string, unknown>): Promise<Record<string, unknown>> {
-  return apiPost('/payment/create', params)
+  return apiPost('/payment/checkout', params)
 }
 
-/** 查询支付状态 */
-export function queryOrder(orderId: string): Promise<Record<string, unknown>> {
-  return apiGet(`/payment/status/${orderId}`)
+/** 查询当前登录用户的订阅状态。106 是 GET /v1/payment/status，不按订单号取。 */
+export function queryOrder(): Promise<Record<string, unknown>> {
+  return apiGet('/payment/status')
+}
+
+/** 企业咨询。106 接受 POST /v1/enterprise/contact-sales，没有 /v1/contact/submit。 */
+export function submitSalesInquiry(body: {
+  company_name: string
+  contact_name: string
+  contact_email: string
+  contact_phone?: string
+  message?: string
+}): Promise<{ ok?: boolean; id?: string; message?: string }> {
+  return apiPost('/enterprise/contact-sales', body)
 }
 
 // ── AI 问答接口（RAG）──

@@ -354,9 +354,10 @@ export async function getShelfFeed(query: ShelfFeedQuery = {}): Promise<ShelfFee
 
   try {
     const response = await fetch(url)
+    const contentType = response.headers.get('content-type') || ''
 
-    if (!response.ok) {
-      throw new Error(`书店 feed 错误: ${response.status}`)
+    if (!response.ok || !contentType.includes('json')) {
+      throw new Error(`书店 feed 错误: ${response.status} ${contentType || 'non-json'}`)
     }
 
     const raw = fixWordPressEncoding(await response.json()) as {

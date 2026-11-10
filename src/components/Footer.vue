@@ -15,9 +15,9 @@
               咨询 | 方案 | 外包服务
             </p>
             <div class="social-links">
-              <a href="https://github.com/szbolent" target="_blank" class="social-link" aria-label="GitHub">
+              <router-link to="/building" class="social-link" aria-label="建设中">
                 <Github :size="18" />
-              </a>
+              </router-link>
             </div>
           </div>
 

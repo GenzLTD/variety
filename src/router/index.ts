@@ -128,15 +128,14 @@ const routes: RouteRecordRaw[] = [
         name: 'Terms',
         component: () => import('@/views/Terms.vue'),
         meta: { title: '用户协议' }
+      },
+      {
+        path: ':pathMatch(.*)*',
+        name: 'NotFound',
+        component: () => import('@/views/NotFound.vue'),
+        meta: { title: '建设中' }
       }
     ]
-  },
-
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: () => import('@/views/NotFound.vue'),
-    meta: { title: '404' }
   }
 ]
 

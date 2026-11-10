@@ -47,9 +47,8 @@
 
         <!-- 错误 / 降级空态 -->
         <div v-else-if="error" class="error-state">
-          <p>📭 {{ error }}</p>
-          <p class="error-hint">节选来自书店 bookstore/v1/feed；服务恢复后即可正常浏览。</p>
-          <button @click="loadFeed" class="btn btn-primary">重试</button>
+          <h2>建设中</h2>
+          <p>书店节选还在接入，暂时不能打开。</p>
         </div>
 
         <!-- 文章列表 -->

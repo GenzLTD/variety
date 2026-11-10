@@ -224,7 +224,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import AOS from 'aos'
-import { apiPost } from '@/api/looma'
 
 // 福利亮点
 const benefits = [
@@ -499,17 +498,10 @@ const closeModal = () => {
 }
 
 const submitApplication = async () => {
-  try {
-    await apiPost('/careers/apply', {
-      job: selectedJob.value?.title,
-      ...applicationForm.value,
-    })
-    alert('申请提交成功！我们会尽快与您联系。')
-    closeModal()
-  } catch (err) {
-    console.error('申请提交失败:', err)
-    alert('提交失败，请稍后重试或直接发送简历至 hr@szbolent.com.cn')
-  }
+  // 106 没有公开的 /v1/careers/apply。正式投递是登录后的
+  // POST /v1/application，并且要带本人简历。门户这张表单收不了。
+  alert(`「${selectedJob.value?.title || '该职位'}」请将简历发送至 hr@szbolent.com.cn`)
+  closeModal()
 }
 
 onMounted(() => {

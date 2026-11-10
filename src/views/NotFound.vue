@@ -2,9 +2,8 @@
   <div class="not-found-page">
     <div class="container">
       <div class="not-found-content" data-aos="fade-up">
-        <h1 class="error-code">404</h1>
-        <h2>页面未找到</h2>
-        <p>抱歉，您访问的页面不存在或已被移除</p>
+        <h1 class="error-code">建设中</h1>
+        <p>这个栏目还在整理，先回到首页看看其他内容。</p>
         <router-link to="/" class="btn btn-primary btn-large">返回首页</router-link>
       </div>
     </div>
@@ -24,17 +23,11 @@
     color: white;
 
     .error-code {
-      font-size: 8rem;
+      font-size: 3.5rem;
       font-weight: bold;
       margin-bottom: 24px;
       color: white;
       text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-
-    h2 {
-      font-size: 2rem;
-      margin-bottom: 16px;
-      color: white;
     }
 
     p {
@@ -59,12 +52,9 @@
   .not-found-page {
     .not-found-content {
       .error-code {
-        font-size: 5rem;
+        font-size: 2.4rem;
       }
 
-      h2 {
-        font-size: 1.5rem;
-      }
     }
   }
 }

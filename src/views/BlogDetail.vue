@@ -8,10 +8,9 @@
 
     <!-- 错误 / 降级空态 -->
     <div v-else-if="error" class="error-container">
-      <h2>内容暂不可用</h2>
-      <p>{{ error }}</p>
-      <p class="error-hint">博客由 WordPress 提供；若持续失败请检查本地 :8800 与 MySQL 容器。</p>
-      <router-link to="/blog" class="btn btn-primary">返回书店</router-link>
+      <h2>建设中</h2>
+      <p>这篇内容还没接上，先回书店或首页。</p>
+      <router-link to="/" class="btn btn-primary">返回首页</router-link>
     </div>
 
     <!-- 文章内容 -->

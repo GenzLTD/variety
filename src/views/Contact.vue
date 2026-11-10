@@ -43,9 +43,9 @@
                 <div class="info-content">
                   <h4>社交媒体</h4>
                   <div class="social-links">
-                    <a href="#" target="_blank">微信</a>
-                    <a href="#" target="_blank">微博</a>
-                    <a href="#" target="_blank">LinkedIn</a>
+                    <router-link to="/building">微信</router-link>
+                    <router-link to="/building">微博</router-link>
+                    <router-link to="/building">LinkedIn</router-link>
                   </div>
                 </div>
               </div>
@@ -100,7 +100,9 @@
                   id="company" 
                   v-model="formData.company"
                   placeholder="请输入您的公司名称"
+                  :class="{ error: errors.company }"
                 />
+                <span v-if="errors.company" class="error-message">{{ errors.company }}</span>
               </div>
 
               <div class="form-group">
@@ -163,7 +165,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { apiPost } from '@/api/looma'
+import { submitSalesInquiry } from '@/api/looma'
 
 const formData = reactive({
   name: '',
@@ -177,6 +179,7 @@ const formData = reactive({
 const errors = reactive({
   name: '',
   email: '',
+  company: '',
   message: ''
 })
 
@@ -188,6 +191,7 @@ const validateForm = () => {
 
   errors.name = ''
   errors.email = ''
+  errors.company = ''
   errors.message = ''
 
   if (!formData.name.trim()) {
@@ -201,6 +205,11 @@ const validateForm = () => {
     isValid = false
   } else if (!emailRegex.test(formData.email)) {
     errors.email = '请输入有效的邮箱地址'
+    isValid = false
+  }
+
+  if (!formData.company.trim()) {
+    errors.company = '请输入公司名称'
     isValid = false
   }
 
@@ -224,13 +233,13 @@ const handleSubmit = async () => {
   submitSuccess.value = false
 
   try {
-    await apiPost('/contact/submit', {
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      company: formData.company,
-      service: formData.service,
-      message: formData.message,
+    const serviceNote = formData.service ? `意向服务：${formData.service}\n` : ''
+    await submitSalesInquiry({
+      company_name: formData.company.trim(),
+      contact_name: formData.name.trim(),
+      contact_email: formData.email.trim(),
+      contact_phone: formData.phone.trim(),
+      message: `${serviceNote}${formData.message.trim()}`,
     })
 
     submitSuccess.value = true
