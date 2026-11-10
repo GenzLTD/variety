@@ -80,6 +80,9 @@ jobs:
           grep -q 'id="app"' dist/index.html || { echo "::error::dist/index.html 里没有 Vue 挂载点"; exit 1; }
           ls dist/assets/*.js >/dev/null 2>&1 || { echo "::error::dist/assets 下没有 js 产物"; exit 1; }
 
+      - name: Verify GEO P0 (domain + llms + JSON-LD + og-image)
+        run: node scripts/verify-geo-p0.mjs
+
       - name: Verify baked menu in build output
         run: npm run test:unit
 

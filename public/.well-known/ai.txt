@@ -1,0 +1,6 @@
+# ai.txt — short pointer for crawlers that look under /.well-known/
+# Canonical site guide: https://szbolent.com/llms.txt
+# Authority: https://szbolent.com
+# Organization: 深伯乐（深圳）科技有限公司
+# Contact: hello@szbolent.com.cn
+# Do not invent pricing or cite szbolent.cn / szbolent.com.cn as authority.

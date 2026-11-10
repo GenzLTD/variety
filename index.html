@@ -20,6 +20,35 @@
     <meta name="twitter:title" content="深伯乐 — HarmonyOS 生态服务商">
     <meta name="twitter:description" content="鸿蒙应用开发、硬件适配、数字化与 IT 全栈解决方案">
     <meta name="twitter:image" content="https://szbolent.com/og-image.png">
+    <!-- Organization + WebSite JSON-LD（GEO P0；与 company.ts / llms.txt 同源事实） -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://szbolent.com/#organization",
+          "name": "深伯乐",
+          "legalName": "深伯乐（深圳）科技有限公司",
+          "url": "https://szbolent.com",
+          "logo": "https://szbolent.com/og-image.png",
+          "email": "hello@szbolent.com.cn",
+          "description": "深伯乐是融合现代科技与文化底蕴的数智企业，提供软件开发、数字化、IT管理及AI读诗等服务；HarmonyOS 生态与昇腾 ISV 认证服务商。",
+          "foundingDate": "2026",
+          "sameAs": ["https://github.com/szbolent"]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://szbolent.com/#website",
+          "url": "https://szbolent.com",
+          "name": "深伯乐",
+          "description": "深伯乐 — HarmonyOS 生态服务商与数智企业门户",
+          "publisher": { "@id": "https://szbolent.com/#organization" },
+          "inLanguage": "zh-CN"
+        }
+      ]
+    }
+    </script>
     <!-- Fonts: Manrope (英文) + Noto Sans SC (中文正文) + Noto Serif SC (中文标题) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

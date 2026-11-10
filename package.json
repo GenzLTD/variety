@@ -26,6 +26,7 @@
     "verify:book": "node scripts/verify-bookstore.mjs",
     "map:shelf": "node scripts/map-bolent-shelf-feed.mjs",
     "prerender:bookstore": "node scripts/prerender-bookstore.mjs",
+    "verify:geo-p0": "node scripts/verify-geo-p0.mjs",
 
     "report:prod": "bash scripts/report-prod.sh",
     "rotate:db": "bash scripts/rotate-db-password.sh",
