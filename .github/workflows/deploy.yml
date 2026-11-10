@@ -83,6 +83,9 @@ jobs:
       - name: Verify GEO P0 (domain + llms + JSON-LD + og-image)
         run: node scripts/verify-geo-p0.mjs
 
+      - name: Verify GEO P1 (core prerender shells)
+        run: node scripts/verify-geo-p1.mjs
+
       - name: Verify baked menu in build output
         run: npm run test:unit
 
