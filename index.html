@@ -20,7 +20,7 @@
     <meta name="twitter:title" content="深伯乐 — HarmonyOS 生态服务商">
     <meta name="twitter:description" content="鸿蒙应用开发、硬件适配、数字化与 IT 全栈解决方案">
     <meta name="twitter:image" content="https://szbolent.com/og-image.png">
-    <!-- Organization + WebSite JSON-LD（GEO P0；与 company.ts / llms.txt 同源事实） -->
+    <!-- Organization + WebSite + Service 目录 JSON-LD（GEO P0/P2；仅公示事实，不含邮箱与备案号） -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -39,7 +39,8 @@
             "availableLanguage": ["zh-CN"]
           },
           "description": "深伯乐是融合现代科技与文化底蕴的数智企业，提供软件开发、数字化、IT管理及AI读诗等服务；HarmonyOS 生态与昇腾 ISV 认证服务商。",
-          "foundingDate": "2026"
+          "foundingDate": "2026",
+          "hasOfferCatalog": { "@id": "https://szbolent.com/#services" }
         },
         {
           "@type": "WebSite",
@@ -49,6 +50,79 @@
           "description": "深伯乐 — HarmonyOS 生态服务商与数智企业门户",
           "publisher": { "@id": "https://szbolent.com/#organization" },
           "inLanguage": "zh-CN"
+        },
+        {
+          "@type": "OfferCatalog",
+          "@id": "https://szbolent.com/#services",
+          "name": "深伯乐服务目录",
+          "itemListElement": [
+            { "@type": "Offer", "itemOffered": { "@id": "https://szbolent.com/services/outsourcing#service" }, "url": "https://szbolent.com/services/outsourcing" },
+            { "@type": "Offer", "itemOffered": { "@id": "https://szbolent.com/services/agile#service" }, "url": "https://szbolent.com/services/agile" },
+            { "@type": "Offer", "itemOffered": { "@id": "https://szbolent.com/services/automation#service" }, "url": "https://szbolent.com/services/automation" },
+            { "@type": "Offer", "itemOffered": { "@id": "https://szbolent.com/services/development#service" }, "url": "https://szbolent.com/services/development" },
+            { "@type": "Offer", "itemOffered": { "@id": "https://szbolent.com/services/digital#service" }, "url": "https://szbolent.com/services/digital" },
+            { "@type": "Offer", "itemOffered": { "@id": "https://szbolent.com/services/it-management#service" }, "url": "https://szbolent.com/services/it-management" }
+          ]
+        },
+        {
+          "@type": "Service",
+          "@id": "https://szbolent.com/services/outsourcing#service",
+          "name": "IT 外包服务",
+          "description": "专业的技术团队，为您提供高质量的 IT 资源外包服务",
+          "url": "https://szbolent.com/services/outsourcing",
+          "provider": { "@id": "https://szbolent.com/#organization" },
+          "areaServed": "CN",
+          "availableLanguage": "zh-CN"
+        },
+        {
+          "@type": "Service",
+          "@id": "https://szbolent.com/services/agile#service",
+          "name": "敏捷咨询服务",
+          "description": "帮助企业实现敏捷转型，提升团队协作效率",
+          "url": "https://szbolent.com/services/agile",
+          "provider": { "@id": "https://szbolent.com/#organization" },
+          "areaServed": "CN",
+          "availableLanguage": "zh-CN"
+        },
+        {
+          "@type": "Service",
+          "@id": "https://szbolent.com/services/automation#service",
+          "name": "自动化测试 & QA",
+          "description": "全面的质量保证和自动化测试解决方案",
+          "url": "https://szbolent.com/services/automation",
+          "provider": { "@id": "https://szbolent.com/#organization" },
+          "areaServed": "CN",
+          "availableLanguage": "zh-CN"
+        },
+        {
+          "@type": "Service",
+          "@id": "https://szbolent.com/services/development#service",
+          "name": "定制软件开发",
+          "description": "量身定制的软件解决方案，满足您的独特需求",
+          "url": "https://szbolent.com/services/development",
+          "provider": { "@id": "https://szbolent.com/#organization" },
+          "areaServed": "CN",
+          "availableLanguage": "zh-CN"
+        },
+        {
+          "@type": "Service",
+          "@id": "https://szbolent.com/services/digital#service",
+          "name": "数字化转型 & 数据分析",
+          "description": "助力企业数字化转型，释放数据价值",
+          "url": "https://szbolent.com/services/digital",
+          "provider": { "@id": "https://szbolent.com/#organization" },
+          "areaServed": "CN",
+          "availableLanguage": "zh-CN"
+        },
+        {
+          "@type": "Service",
+          "@id": "https://szbolent.com/services/it-management#service",
+          "name": "IT 项目管理",
+          "description": "专业的 IT 项目管理服务，确保项目成功交付",
+          "url": "https://szbolent.com/services/it-management",
+          "provider": { "@id": "https://szbolent.com/#organization" },
+          "areaServed": "CN",
+          "availableLanguage": "zh-CN"
         }
       ]
     }

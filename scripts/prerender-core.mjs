@@ -19,6 +19,11 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { escapeHtml, injectSeoAndBody } from './lib/prerender-html.mjs'
+import {
+  aboutBreadcrumb,
+  contactPageExtraGraphs,
+  servicesPageGraph,
+} from './lib/geo-schema.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
@@ -28,7 +33,7 @@ const SITE = (process.env.SITE_URL || process.env.VITE_SITE_URL || 'https://szbo
 const ORG = '深伯乐（深圳）科技有限公司'
 const BRAND = '深伯乐'
 
-/** @type {Array<{ path: string, title: string, description: string, body: string }>} */
+/** @type {Array<{ path: string, title: string, description: string, body: string, jsonLd?: object | object[] }>} */
 const PAGES = [
   {
     path: '/',
@@ -67,6 +72,7 @@ const PAGES = [
     path: '/about',
     title: `关于我们 | ${BRAND}`,
     description: `${ORG}简介：数智企业、HarmonyOS 生态与昇腾 ISV 认证服务商。`,
+    jsonLd: aboutBreadcrumb(),
     body: `<main id="prerender-core" data-prerender="about">
   <header><h1>关于我们</h1></header>
   <p>${escapeHtml(ORG)}是一家融合现代科技与文化底蕴的数智企业。我们提供软件开发、数字化、自动化、IT 管理与 IT 外包等服务，并以 AI 读诗为特色板块。</p>
@@ -86,6 +92,7 @@ const PAGES = [
     path: '/services',
     title: `我们的服务 | ${BRAND}`,
     description: `${ORG}服务：IT 外包、敏捷咨询、测试、项目管理、HarmonyOS 与昇腾方案。`,
+    jsonLd: servicesPageGraph(),
     body: `<main id="prerender-core" data-prerender="services">
   <header><h1>我们的服务</h1></header>
   <p>${escapeHtml(ORG)}提供全方位 IT 服务，以工程精度交付项目。</p>
@@ -104,6 +111,7 @@ const PAGES = [
     path: '/contact',
     title: `联系我们 | ${BRAND}`,
     description: `联系${ORG}：企业咨询请使用官网联系表单。权威域 szbolent.com。`,
+    jsonLd: contactPageExtraGraphs(),
     body: `<main id="prerender-core" data-prerender="contact">
   <header><h1>联系我们</h1></header>
   <p>${escapeHtml(ORG)}欢迎商务与企业咨询。</p>
@@ -180,6 +188,7 @@ function main() {
       canonical,
       ogTitle: page.title,
       body: page.body,
+      jsonLd: page.jsonLd,
     })
     const out = outPathFor(page.path)
     writeFileSync(out, html, 'utf8')

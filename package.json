@@ -5,7 +5,8 @@
   "description": "szbolent.com 智能化诗词门户 — Vue3 + Headless WP + AI 诗词",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/prerender-bookstore.mjs && node scripts/prerender-core.mjs",
+    "build": "vite build && node scripts/prerender-bookstore.mjs && node scripts/prerender-core.mjs && node scripts/gen-sitemap.mjs",
+    "sitemap:gen": "node scripts/gen-sitemap.mjs",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
@@ -29,6 +30,7 @@
     "prerender:core": "node scripts/prerender-core.mjs",
     "verify:geo-p0": "node scripts/verify-geo-p0.mjs",
     "verify:geo-p1": "node scripts/verify-geo-p1.mjs",
+    "verify:geo-p2": "node scripts/verify-geo-p2.mjs",
 
     "report:prod": "bash scripts/report-prod.sh",
     "rotate:db": "bash scripts/rotate-db-password.sh",
