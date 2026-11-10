@@ -1,7 +1,6 @@
 /**
  * 深伯乐门户品牌配置
- * 对齐双域名架构：.cn（个人备案·内容站）+ .com.cn（企业备案·API/商业）
- * 门户域名：www.szbolent.com.cn
+ * 公开权威域：szbolent.com（www 与裸域同站）。旧 .cn / .com.cn 仅作历史镜像，勿再写入 SEO。
  */
 
 export const companyInfo = {
@@ -24,7 +23,7 @@ export const companyInfo = {
   address: {
     main: {
       city: '中国',
-      full: 'www.szbolent.cn',
+      full: 'szbolent.com',
       postcode: '',
     },
   },
@@ -99,8 +98,8 @@ export const seoConfig = {
     '昇腾 ISV',
     '昇腾认证服务商',
   ],
-  siteUrl: 'https://www.szbolent.cn',
-  ogImage: '/images/og-image.jpg',
+  siteUrl: 'https://szbolent.com',
+  ogImage: '/og-image.png',
 }
 
 export const pricingPlans = [

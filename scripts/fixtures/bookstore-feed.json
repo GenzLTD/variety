@@ -1,0 +1,26 @@
+{
+  "count": 3,
+  "items": [
+    {
+      "id": "fixture-lu-you-1",
+      "title": "游山西村",
+      "genre": "诗",
+      "excerpt": ["莫笑农家腊酒浑", "丰年留客足鸡豚", "山重水复疑无路", "柳暗花明又一村"],
+      "url": "https://szbolent.com/poem/fixture-lu-you-1"
+    },
+    {
+      "id": "fixture-su-shi-1",
+      "title": "水调歌头·明月几时有",
+      "genre": "词",
+      "excerpt": ["明月几时有", "把酒问青天", "不知天上宫阙", "今夕是何年"],
+      "url": "https://szbolent.com/poem/fixture-su-shi-1"
+    },
+    {
+      "id": "fixture-li-bai-1",
+      "title": "静夜思",
+      "genre": "诗",
+      "excerpt": ["床前明月光", "疑是地上霜", "举头望明月", "低头思故乡"],
+      "url": "https://szbolent.com/poem/fixture-li-bai-1"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.szbolent.cn/sitemap.xml
+Sitemap: https://szbolent.com/sitemap.xml

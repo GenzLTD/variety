@@ -1,6 +1,6 @@
 # Variety
 
-> **一份入口契约，多端多变体。** szbolent.cn 门户是它的第一个 variant。
+> **一份入口契约，多端多变体。** szbolent.com 门户是它的第一个 variant。
 
 自 `szbolent-portal@74ccc9b`（分支 `cursor/ascend-isv-certification`）迁出。旧仓不再演进，本仓是门户与多端组合层的**唯一开发树**。
 
