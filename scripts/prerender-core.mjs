@@ -7,7 +7,11 @@
  * 服务摘要嵌进 `#app`。爬虫无 JS 可读；浏览器 hydration 后由 Vue 接管。
  *
  * 路由：/ /about /services /contact /careers /privacy /terms /poetry
- * `/blog` 由 prerender-bookstore.mjs 负责（本脚本之后运行可覆盖）。
+ * `/blog` 由 prerender-bookstore.mjs 单独写出（本脚本不写 /blog）。
+ *
+ * 构建顺序（package.json）：vite → prerender-bookstore → prerender-core。
+ * bookstore 必须先跑：它以干净的 vite `dist/index.html` 为底稿；
+ * core 最后写首页，避免 bookstore 吃到已注入 <div> 的首页壳而截断。
  *
  * 事实策略（对齐 P0）：不写未核验公开邮箱、不写未覆盖 .com 的 ICP。
  */

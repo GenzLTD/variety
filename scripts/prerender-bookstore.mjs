@@ -4,9 +4,9 @@
  *
  * 选型（相对 tip 架构的最小改动）：
  *   Vite CSR SPA + nginx 同源反代 `/wp-json`，不做全站 SSR。
- *   构建后基于 dist/index.html 写出 dist/blog/index.html，把书店 feed
- *   的标题/节选嵌进 `#app` 初始 DOM。爬虫不执行 JS 时仍可读正文；
- *   浏览器 hydration 后由 Vue 接管（与现网 Blog.vue 一致）。
+ *   构建后基于干净的 vite dist/index.html 写出 dist/blog/index.html，
+ *   把书店 feed 的标题/节选嵌进 `#app`。须在 prerender-core 写首页之前跑，
+ *   以免底稿已被首页壳污染。爬虫无 JS 可读；hydration 后由 Vue 接管。
  *
  * 环境：
  *   SITE_URL              权威域（默认 https://szbolent.com）
