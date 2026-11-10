@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "note": "入口契约真源。vite proxy / nginx / 冒烟脚本均由此文件驱动，禁止在他处重复声明分流规则。v2：补 TLS（sites.portal.tls）与 WP 保留路径，见 docs/DEPLOY_PIPELINE_RUN14_POSTMORTEM.md。",
+  "note": "入口契约真源。vite proxy / nginx / 冒烟脚本均由此文件驱动，禁止在他处重复声明分流规则。v2：补 TLS（sites.portal.tls）与 WP 保留路径，见 docs/DEPLOY_PIPELINE_RUN14_POSTMORTEM.md。注意：本契约生成的根目录 nginx.conf 是阿里旧书店机遗留产物；新机现役橱窗是 deploy/nginx/szbolent.com.conf（见 docs/geo/tls-and-legacy-domains.md），勿把本生成物装到新机橱窗。",
 
   "dev": {
     "port": 3000,

@@ -98,6 +98,16 @@ node scripts/gen-entry.mjs --check
 | [OPERATIONS_MANUAL](./docs/OPERATIONS_MANUAL.md) | 运维手册（命令已以本仓为准，路径待校正） |
 | [LINEAGE](./docs/LINEAGE.md) | 溯源与边界 |
 
+
+## 橱窗 nginx 消歧（GEO / 运维）
+
+| 产物 | 含义 |
+|------|------|
+| `deploy/nginx/szbolent.com.conf` | **现役**新机橱窗站点配置（`szbolent.com` / www）；CI 发布脚本装这份 |
+| 根目录 `nginx.conf` | `contracts/entry.json` → `gen-entry` 生成的**遗留**阿里书店机叙事；**不要**安装到新机橱窗 |
+| 旧域 / ban-list | 见 `docs/geo/tls-and-legacy-domains.md`；无授权不部署、不碰退役主机 |
+
+GEO 引用监测：`docs/geo/citation-questionnaire.md`。
 ## License
 
 MIT
