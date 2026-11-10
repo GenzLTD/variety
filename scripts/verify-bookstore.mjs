@@ -6,7 +6,7 @@
  *   ① /v1/menus 假绿（curl 200、浏览器空导航）→ verify-nav-render.mjs 已收口；
  *   ② 菜单链路假绿（Page Engine 从未部署）→ 同上；
  *   ③ 书店栏目是橱窗自己的页面（不依赖菜单），数据源是跨域的
- *      https://szbolent.cn/wp-json/bookstore/v1/feed —— 服务端 curl 通、CORS 通、
+ *      同源 /wp-json/bookstore/v1/feed（nginx → 法兰克福）—— 服务端 curl 通、CORS 通、
  *      都不等于「用户打开 /blog 看得到卡片」。
  *      feed 挂了页面会渲染成「📭 暂无文章 / 内容暂不可用」，而 SPA 路由照样 200，
  *      只看状态码的验收会把它判成绿。
@@ -22,18 +22,18 @@
  *   H. genre 筛选点了之后仍有内容（筛选不是「一点就空」）
  *
  * 用法：
- *   npm run verify:book                                    # 默认线上 https://szbolent.com.cn/blog
+ *   npm run verify:book                                    # 默认线上 https://szbolent.com/blog
  *   SITE_URL=http://localhost:4173/ npm run verify:book    # 本地 preview 也适用
- *   BOOKSTORE_HOST=szbolent.cn MIN_ITEMS=5 npm run verify:book
+ *   BOOKSTORE_HOST=szbolent.com MIN_ITEMS=5 npm run verify:book
  * 退出码：0 = 全通过；1 = 有断言不过
  */
 import { chromium } from 'playwright'
 
-const SITE = (process.env.SITE_URL || 'https://szbolent.com.cn/').replace(/\/+$/, '')
+const SITE = (process.env.SITE_URL || 'https://szbolent.com/').replace(/\/+$/, '')
 const PAGE_PATH = process.env.BOOKSTORE_PATH || '/blog'
 const TARGET = `${SITE}${PAGE_PATH}`
 const FEED_MARK = process.env.FEED_MARK || '/wp-json/bookstore/v1/feed'
-const SOURCE_HOST = process.env.BOOKSTORE_HOST || 'szbolent.cn'
+const SOURCE_HOST = process.env.BOOKSTORE_HOST || 'szbolent.com'
 const MIN_ITEMS = Number(process.env.MIN_ITEMS || 1)
 
 const ok = (s) => { console.log(`\u001b[0;32m✅ PASS\u001b[0m  ${s}`); PASS++ }
@@ -218,10 +218,10 @@ if (FAIL > 0) {
   console.log('='.repeat(52))
   console.log('')
   console.log('排查顺序：')
-  console.log('  1) 源站 feed  → curl https://szbolent.cn/wp-json/bookstore/v1/feed（应 200 且 count>0）')
-  console.log('  2) 跨域       → 带 Origin: 门户域名 看 Access-Control-Allow-Origin 是否放行')
-  console.log('  3) 前端变量   → 构建产物里的 VITE_SHELF_API_BASE 是不是指向书店源站')
-  console.log('  4) 页面路由   → 门户 nginx 的 /blog 是否 try_files 回退到 SPA index.html')
+  console.log('  1) 同源 feed  → curl https://szbolent.com/wp-json/bookstore/v1/feed（应 200 且 count>0）')
+  console.log('  2) 反代       → nginx /wp-json → 法兰克福；浏览器勿再直连旧 .cn')
+  console.log('  3) 前端变量   → 构建产物里的 VITE_SHELF_API_BASE 应为 /wp-json/bookstore/v1')
+  console.log('  4) 页面路由   → 门户 nginx /blog 优先 dist/blog/index.html，再回退 SPA')
   process.exit(1)
 }
 console.log('='.repeat(52))

@@ -190,7 +190,7 @@ router.beforeEach(async (to, _from, next) => {
   if (to.meta.icpRisk === 'personal-domain-no-pricing' && import.meta.env.PROD) {
     console.warn(
       '[router] /pricing 在个人备案生产环境不可用。' +
-      '请将定价页面迁移至小程序或公司备案域名（szbolent.com.cn）。'
+      '请将定价页面迁移至小程序或企业备案通道；公开橱窗权威域为 szbolent.com。'
     )
   }
 

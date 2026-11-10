@@ -2,10 +2,10 @@
   "name": "szbolent-portal",
   "version": "0.1.0",
   "type": "module",
-  "description": "www.szbolent.cn 智能化诗词门户 — Vue3 + Headless WP + AI 诗词",
+  "description": "szbolent.com 智能化诗词门户 — Vue3 + Headless WP + AI 诗词",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/prerender-bookstore.mjs",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
@@ -24,6 +24,9 @@
     "verify:prod": "bash scripts/verify-prod.sh",
     "verify:nav": "node scripts/verify-nav-render.mjs",
     "verify:book": "node scripts/verify-bookstore.mjs",
+    "map:shelf": "node scripts/map-bolent-shelf-feed.mjs",
+    "prerender:bookstore": "node scripts/prerender-bookstore.mjs",
+
     "report:prod": "bash scripts/report-prod.sh",
     "rotate:db": "bash scripts/rotate-db-password.sh",
     "report:db-env": "bash scripts/report-db-env.sh"

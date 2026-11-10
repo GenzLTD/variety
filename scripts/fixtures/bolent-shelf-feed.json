@@ -1,0 +1,69 @@
+{
+  "protocol": "bolent-shelf-bridge/1",
+  "generated_at": "2026-11-11T00:00:00.000Z",
+  "site": {
+    "name": "myblog（离线快照）",
+    "url": "http://myblog.szbolent.local",
+    "description": "Committed snapshot when myblog / MySQL unreachable — shapes match bolent-shelf/v1",
+    "lang": "zh-CN",
+    "icon": null,
+    "author": { "name": "深伯乐", "avatar": null, "bio": "" }
+  },
+  "count": 3,
+  "total": 3,
+  "page": 1,
+  "limit": 100,
+  "items": [
+    {
+      "id": 101,
+      "slug": "you-shan-xi-cun",
+      "title": "游山西村",
+      "excerpt": "莫笑农家腊酒浑 丰年留客足鸡豚 山重水复疑无路 柳暗花明又一村",
+      "url": "http://myblog.szbolent.local/2024/01/you-shan-xi-cun/",
+      "cover": null,
+      "published": "2024-01-10T08:00:00+08:00",
+      "modified": "2024-01-10T08:00:00+08:00",
+      "author": { "name": "陆游", "avatar": "" },
+      "categories": [{ "name": "诗", "slug": "shi" }],
+      "tags": [{ "name": "宋诗", "slug": "song-shi" }],
+      "word_count": 28,
+      "reading_minutes": 1,
+      "lang": "zh-CN"
+    },
+    {
+      "id": 102,
+      "slug": "shui-diao-ge-tou",
+      "title": "水调歌头·明月几时有",
+      "excerpt": "明月几时有 把酒问青天 不知天上宫阙 今夕是何年",
+      "url": "http://myblog.szbolent.local/2024/01/shui-diao-ge-tou/",
+      "cover": null,
+      "published": "2024-01-11T08:00:00+08:00",
+      "modified": "2024-01-11T08:00:00+08:00",
+      "author": { "name": "苏轼", "avatar": "" },
+      "categories": [{ "name": "词", "slug": "ci" }],
+      "tags": [{ "name": "宋词", "slug": "song-ci" }],
+      "word_count": 24,
+      "reading_minutes": 1,
+      "lang": "zh-CN"
+    },
+    {
+      "id": 103,
+      "slug": "jing-ye-si",
+      "title": "静夜思",
+      "excerpt": "床前明月光 疑是地上霜 举头望明月 低头思故乡",
+      "url": "http://myblog.szbolent.local/2024/01/jing-ye-si/",
+      "cover": null,
+      "published": "2024-01-12T08:00:00+08:00",
+      "modified": "2024-01-12T08:00:00+08:00",
+      "author": { "name": "李白", "avatar": "" },
+      "categories": [{ "name": "诗", "slug": "shi" }],
+      "tags": [],
+      "word_count": 20,
+      "reading_minutes": 1,
+      "lang": "zh-CN"
+    }
+  ],
+  "license": { "type": "all-rights-reserved", "url": "" },
+  "feed_url": "http://myblog.szbolent.local/wp-json/bolent-shelf/v1/feed",
+  "rss_url": "http://myblog.szbolent.local/wp-json/bolent-shelf/v1/feed?format=rss"
+}

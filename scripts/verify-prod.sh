@@ -19,7 +19,7 @@
 # =============================================================
 set -uo pipefail
 
-HOST="${PORTAL_HOST:-szbolent.cn}"
+HOST="${PORTAL_HOST:-szbolent.com}"
 HOST_WWW="www.${HOST}"
 WP_PORT="${WP_PORT:-8080}"
 NGINX_CONF="${NGINX_CONF:-/etc/nginx/conf.d/00-szbolent.conf}"

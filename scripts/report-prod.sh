@@ -23,7 +23,7 @@ SERVER="${VERIFY_SERVER:-root@47.115.168.107}"
 SSH_TIMEOUT="${VERIFY_SSH_TIMEOUT:-8}"
 # 入口域名与地址：默认按域名 + --resolve 打这个 IP，这样既不走本地 DNS
 # （不受本机 hosts/DNS 影响），又能真实验证书链。
-SITE_HOST="${VERIFY_HOST:-szbolent.cn}"
+SITE_HOST="${VERIFY_HOST:-szbolent.com}"
 SITE_IP="${VERIFY_IP:-47.115.168.107}"
 CERT_MIN_DAYS="${VERIFY_CERT_MIN_DAYS:-20}"
 
