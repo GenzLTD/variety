@@ -11,7 +11,14 @@ export function escapeHtml(s) {
 
 /**
  * @param {string} html
- * @param {{ title: string, description: string, canonical: string, ogTitle?: string, body: string }} opts
+ * @param {{
+ *   title: string,
+ *   description: string,
+ *   canonical: string,
+ *   ogTitle?: string,
+ *   body: string,
+ *   jsonLd?: object | object[],
+ * }} opts
  */
 export function injectSeoAndBody(html, opts) {
   const { title, description, canonical, body } = opts
@@ -45,7 +52,32 @@ export function injectSeoAndBody(html, opts) {
     out = out.replace('</head>', `    <link rel="canonical" href="${escapeHtml(canonical)}">\n  </head>`)
   }
 
+  if (opts.jsonLd) {
+    out = injectJsonLd(out, opts.jsonLd)
+  }
+
   return replaceAppDiv(out, body)
+}
+
+/**
+ * 在 </head> 前追加一组 application/ld+json（保留首页已有 Organization/WebSite）。
+ * @param {string} html
+ * @param {object | object[]} graphs
+ */
+export function injectJsonLd(html, graphs) {
+  const list = Array.isArray(graphs) ? graphs : [graphs]
+  const blocks = list
+    .filter(Boolean)
+    .map(
+      (g) =>
+        `    <script type="application/ld+json">\n${JSON.stringify(g, null, 2)}\n    </script>`
+    )
+    .join('\n')
+  if (!blocks) return html
+  if (/<\/head>/i.test(html)) {
+    return html.replace(/<\/head>/i, `${blocks}\n  </head>`)
+  }
+  return `${html}\n${blocks}\n`
 }
 
 /** 按深度匹配替换 `#app`，避免非贪婪正则在壳内出现嵌套 <div> 时提前截断。 */

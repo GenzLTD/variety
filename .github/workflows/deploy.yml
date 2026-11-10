@@ -86,6 +86,9 @@ jobs:
       - name: Verify GEO P1 (core prerender shells)
         run: node scripts/verify-geo-p1.mjs
 
+      - name: Verify GEO P2 (dynamic sitemap + Service/FAQ/Breadcrumb)
+        run: node scripts/verify-geo-p2.mjs
+
       - name: Verify baked menu in build output
         run: npm run test:unit
 
