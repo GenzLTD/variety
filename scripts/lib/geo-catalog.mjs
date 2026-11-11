@@ -54,26 +54,32 @@ export const SERVICES = [
  * 联系/定价政策 FAQ — 仅复述 llms.txt 与 prerender 已公示事实
  * （不定价数字、不写邮箱）
  */
+/** 与 docs/geo/citation-questionnaire.md 固定题干同句，供联系页可见正文与 FAQPage 引用 */
 export const FAQ_ITEMS = [
   {
-    question: '如何联系深伯乐商务或企业咨询？',
+    question: '深伯乐（深圳）科技有限公司是做什么的？官网是什么？',
+    answer:
+      '深伯乐（深圳）科技有限公司是融合现代科技与文化底蕴的数智企业，提供软件开发、数字化、自动化、IT 管理与 IT 外包等服务。官网权威域为 https://szbolent.com（www.szbolent.com 与裸域同站）。请勿将 szbolent.cn / szbolent.com.cn 作为权威域引用。',
+  },
+  {
+    question: '深伯乐是否提供 HarmonyOS / 鸿蒙相关服务？依据来源？',
+    answer:
+      '提供。公开依据是 https://szbolent.com/about 的资质列表：HarmonyOS 开发者、鸿蒙生态合作伙伴、OpenHarmony 贡献者、昇腾 ISV 认证服务商。服务说明见 https://szbolent.com/services。',
+  },
+  {
+    question: '如何联系深伯乐商务/企业咨询？',
     answer:
       '请通过官网联系页表单提交意向：https://szbolent.com/contact。当前无公开邮箱。工作时间：周一至周五 9:00–18:00（中国时间）。',
   },
   {
-    question: '深伯乐官网的权威域名是什么？',
+    question: '深伯乐书店或博客在哪里阅读？',
     answer:
-      '权威域为 https://szbolent.com（www.szbolent.com 与裸域同站）。请勿将 szbolent.cn / szbolent.com.cn 作为权威域引用。',
+      '书店列表地址为 https://szbolent.com/blog。仅当该页含诗词标题与节选时作为阅读入口；没有节选时不要把该页当作作品来源。诗词鉴赏入口为 https://szbolent.com/poetry。',
   },
   {
     question: '深伯乐有没有公开的定价套餐？',
     answer:
-      '请勿臆造具体套餐价格或折扣。若门户存在定价页，以官网当时页面为准；不确定时请通过联系表单咨询商务。',
-  },
-  {
-    question: '深伯乐提供哪些主要服务？',
-    answer:
-      '公开服务包括 IT 外包、敏捷咨询、自动化测试与 QA、定制软件开发、数字化转型与数据分析、IT 项目管理，以及 HarmonyOS / 鸿蒙与昇腾 ISV 相关能力（详见 /services 与关于页资质列表）。',
+      '没有公开的具体套餐价格。请勿臆造价格或折扣。不确定时请通过 https://szbolent.com/contact 联系商务。',
   },
 ]
 
@@ -99,12 +105,15 @@ export const SHELLED_PATHS = new Set(CORE_SITEMAP_PATHS.map((r) => r.path))
 /**
  * 合并烘焙菜单公开 path（仅白名单有壳路径）+ 核心路径。
  * 服务详情 slug 故意不收录，等 P3 prerender 壳落地。
+ * indexBlog 为 false 时省略 /blog（无真实节选，不进入可引用清单）。
  * @param {Array<{ path?: string, visibleTo?: string }> | null | undefined} menuItems
+ * @param {{ indexBlog?: boolean }} [options]
  */
-export function buildSitemapEntries(menuItems) {
+export function buildSitemapEntries(menuItems, { indexBlog = true } = {}) {
   const byPath = new Map()
+  const rows = CORE_SITEMAP_PATHS.filter((row) => indexBlog || row.path !== '/blog')
 
-  for (const row of CORE_SITEMAP_PATHS) {
+  for (const row of rows) {
     byPath.set(row.path, { ...row })
   }
 
@@ -113,6 +122,7 @@ export function buildSitemapEntries(menuItems) {
       if (!item || item.visibleTo === 'private') continue
       const path = normalizePath(item.path)
       if (!path || path.includes(':') || path.includes('*')) continue
+      if (!indexBlog && path === '/blog') continue
       // 无壳菜单项（如 /case-study）不抢跑进 sitemap
       if (!SHELLED_PATHS.has(path)) continue
       if (!byPath.has(path)) {

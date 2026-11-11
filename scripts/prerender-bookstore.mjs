@@ -15,7 +15,9 @@
  *   BOOKSTORE_URL_MODE    document（默认 /blog/<slug>）| permalink | poem
  *   BOOKSTORE_DEFAULT_GENRE  无分类时的 genre 缺省（默认「文」）
  *
- * 失败策略：上游不可达时写出带公司/书店导语的空列表壳（exit 0）。
+ * 失败策略：上游不可达时写出空列表壳（exit 0），robots noindex，
+ * 且正文不写「建设中」。同时写 dist/.bookstore-indexable.json，
+ * 供 sitemap 省略 /blog。有真实节选时才 index。
  * 夹具仅在显式 BOOKSTORE_FEED_FILE 时启用，避免污染生产构建。
  */
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
@@ -135,13 +137,22 @@ function buildBody(items) {
     )
     .join('\n')
 
-  return `<main id="prerender-bookstore" data-prerender="bookstore">
+  if (!items.length) {
+    return `<main id="prerender-bookstore" data-prerender="bookstore" data-feed-count="0">
   <header>
     <h1>书店</h1>
-    <p>深伯乐（深圳）科技有限公司 — 同源书店节选。完整原文经本站 /wp-json 与法兰克福 WordPress 内容线提供；权威域 https://szbolent.com。</p>
+    <p>深伯乐（深圳）科技有限公司。权威域 https://szbolent.com。本节选在同源诗词数据就绪后才列入可引用页面。</p>
+  </header>
+</main>`
+  }
+
+  return `<main id="prerender-bookstore" data-prerender="bookstore" data-feed-count="${items.length}">
+  <header>
+    <h1>书店</h1>
+    <p>深伯乐（深圳）科技有限公司 — 同源书店节选。权威域 https://szbolent.com。</p>
   </header>
   <section aria-label="书店节选列表">
-${articles || '    <p>书店节选建设中。权威站点 https://szbolent.com/blog 。</p>'}
+${articles}
   </section>
 </main>`
 }
@@ -154,18 +165,29 @@ async function main() {
   }
 
   const { items } = await loadFeed()
+  const indexable = items.length > 0
   const html = injectSeoAndBody(readFileSync(indexPath, 'utf8'), {
     title: '书店 | 深伯乐',
-    description: '深伯乐书店节选：诗词与文化内容同源陈列于 szbolent.com/blog',
+    description: indexable
+      ? '深伯乐书店节选：诗词标题与摘要列于 szbolent.com/blog'
+      : '深伯乐书店栏目。有同源节选时本页列出标题与摘要；无节选时不作为引用源。',
     canonical: `${SITE}/blog`,
     ogTitle: '书店 | 深伯乐',
+    robots: indexable ? 'index, follow' : 'noindex, follow',
     body: buildBody(items),
   })
   const outDir = join(DIST, 'blog')
   mkdirSync(outDir, { recursive: true })
   const outFile = join(outDir, 'index.html')
   writeFileSync(outFile, html, 'utf8')
-  console.log(`[prerender-bookstore] wrote ${outFile} (${items.length} articles)`)
+  writeFileSync(
+    join(DIST, '.bookstore-indexable.json'),
+    JSON.stringify({ indexable, count: items.length }, null, 2) + '\n',
+    'utf8'
+  )
+  console.log(
+    `[prerender-bookstore] wrote ${outFile} (${items.length} articles, indexable=${indexable})`
+  )
 }
 
 main().catch((err) => {

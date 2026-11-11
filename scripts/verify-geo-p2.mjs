@@ -12,6 +12,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CORE_SITEMAP_PATHS, SERVICES } from './lib/geo-catalog.mjs'
+import { readBookstoreIndexable } from './lib/bookstore-indexable.mjs'
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..')
 const DIR = resolve(ROOT, process.argv.find((a) => a.startsWith('--dir='))?.slice(6) || 'dist')
@@ -57,7 +58,11 @@ function assertNoInventedContactFacts(label, text) {
   ok(label + ' JSON-LD 无 sameAs / ICP / 邮箱')
 }
 
-const expectedCount = CORE_SITEMAP_PATHS.length
+const indexBlog = readBookstoreIndexable(DIR).indexable
+const expectedPaths = CORE_SITEMAP_PATHS.filter((row) => indexBlog || row.path !== '/blog')
+const expectedCount = expectedPaths.length
+if (indexBlog) ok('书店有节选，sitemap 收录 /blog')
+else ok('书店无节选，sitemap 省略 /blog')
 const sitemap = read('sitemap.xml')
 if (sitemap) {
   if (!/szbolent\.com/i.test(sitemap)) fail('sitemap 未含 szbolent.com')
@@ -78,7 +83,11 @@ if (sitemap) {
   if (lastmods.length !== expectedCount) fail('sitemap lastmod 数不符（' + lastmods.length + ' vs ' + expectedCount + '）')
   else ok('sitemap lastmod ×' + lastmods.length)
 
-  for (const row of CORE_SITEMAP_PATHS) {
+  if (!indexBlog && locs.some((u) => /\/blog\/?$/.test(u))) {
+    fail('sitemap 在无节选时仍收录 /blog')
+  }
+
+  for (const row of expectedPaths) {
     const needle = row.path === '/' ? 'https://szbolent.com/' : 'https://szbolent.com' + row.path
     const hit =
       row.path === '/'

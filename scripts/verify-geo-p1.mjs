@@ -56,6 +56,15 @@ for (const r of ROUTES) {
   } else {
     ok(`${r.path} 有 prerender 标记`)
   }
+  if (r.path === '/blog') {
+    if (/建设中/.test(html)) fail('/blog 可爬 HTML 含「建设中」')
+    else ok('/blog 可爬 HTML 不含「建设中」')
+    const withheld = /name="robots" content="noindex/i.test(html) || /data-feed-count="0"/.test(html)
+    const listed = /prerender-book-item/.test(html)
+    if (withheld && listed) fail('/blog 同时 noindex 与节选列表')
+    else if (!withheld && !listed) fail('/blog 既未列出节选，也未 noindex')
+    else ok(listed ? '/blog 含可引用节选' : '/blog 无节选，已 noindex')
+  }
   const stripped = html.replace(/勿引用[^。\n]*szbolent\.cn/gi, '')
   if (/https?:\/\/([a-z0-9-]+\.)?szbolent\.cn\b/i.test(stripped)) {
     fail(`${r.path} 含权威域 szbolent.cn URL`)

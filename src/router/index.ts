@@ -61,13 +61,14 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '书店',
           description: '深伯乐书店节选：诗词与文化内容同源陈列于 szbolent.com/blog',
+          robots: 'noindex, follow',
         }
       },
       {
         path: 'blog/:slug',
         name: 'BlogDetail',
         component: () => import('@/views/BlogDetail.vue'),
-        meta: { title: '博客详情' }
+        meta: { title: '博客详情', robots: 'noindex, follow' }
       },
       {
         path: 'case-study',
@@ -216,6 +217,7 @@ router.beforeEach(async (to, _from, next) => {
     title: (to.meta.title as string) || undefined,
     description: (to.meta.description as string) || undefined,
     path: to.path,
+    robots: (to.meta.robots as string) || 'index, follow',
   })
 
   if (to.meta.icpRisk === 'personal-domain-no-pricing' && import.meta.env.PROD) {

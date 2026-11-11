@@ -24,6 +24,7 @@ import {
   contactPageExtraGraphs,
   servicesPageGraph,
 } from './lib/geo-schema.mjs'
+import { FAQ_ITEMS } from './lib/geo-catalog.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
@@ -32,6 +33,15 @@ const SITE = (process.env.SITE_URL || process.env.VITE_SITE_URL || 'https://szbo
 
 const ORG = '深伯乐（深圳）科技有限公司'
 const BRAND = '深伯乐'
+
+function contactFaqHtml() {
+  return FAQ_ITEMS.map(
+    (item) => `  <section>
+    <h2>${escapeHtml(item.question)}</h2>
+    <p>${escapeHtml(item.answer)}</p>
+  </section>`
+  ).join('\n')
+}
 
 /** @type {Array<{ path: string, title: string, description: string, body: string, jsonLd?: object | object[] }>} */
 const PAGES = [
@@ -132,6 +142,7 @@ const PAGES = [
   <p>当前无公开邮箱；请通过官网联系表单提交意向：
     <a href="${SITE}/contact">${SITE}/contact</a>（本页表单需浏览器启用脚本）。</p>
   <p>请勿向未公示渠道发送敏感信息。权威域 https://szbolent.com。</p>
+${contactFaqHtml()}
 </main>`,
   },
   {

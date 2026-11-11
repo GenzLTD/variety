@@ -33,8 +33,8 @@
               <div class="info-item">
                 <div class="info-icon">&#x1F4E7;</div>
                 <div class="info-content">
-                  <h4>电子邮箱</h4>
-                  <p>hello@szbolent.com.cn<br>support@szbolent.com.cn</p>
+                  <h4>企业咨询</h4>
+                  <p>请使用本页表单<br>当前无公开邮箱<br>周一至周五 9:00–18:00</p>
                 </div>
               </div>
 
@@ -149,6 +149,16 @@
       </div>
     </section>
 
+    <section class="citation-faq section">
+      <div class="container">
+        <h2>可核对的问题</h2>
+        <article v-for="item in citationFaq" :key="item.question" class="faq-item">
+          <h3>{{ item.question }}</h3>
+          <p>{{ item.answer }}</p>
+        </article>
+      </div>
+    </section>
+
     <!-- 地图区域 (可选) -->
     <section class="map-section">
       <div class="map-placeholder">
@@ -166,6 +176,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { submitSalesInquiry } from '@/api/looma'
+import { citationFaq } from '@/config/citation-faq'
 
 const formData = reactive({
   name: '',
@@ -252,7 +263,7 @@ const handleSubmit = async () => {
     formData.message = ''
   } catch (err) {
     console.error('表单提交失败:', err)
-    errors.message = '提交失败，请稍后重试或直接发送邮件至 hello@szbolent.com.cn'
+    errors.message = '提交失败，请稍后重试。'
   } finally {
     isSubmitting.value = false
   }
@@ -437,6 +448,25 @@ const handleSubmit = async () => {
         color: #52c41a;
         text-align: center;
         font-weight: 500;
+      }
+    }
+  }
+
+  .citation-faq {
+    h2 {
+      margin-bottom: 28px;
+    }
+
+    .faq-item {
+      margin-bottom: 24px;
+
+      h3 {
+        font-size: 1.15rem;
+        margin-bottom: 8px;
+      }
+
+      p {
+        line-height: 1.7;
       }
     }
   }

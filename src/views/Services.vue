@@ -189,9 +189,6 @@
             <router-link to="/contact" class="btn btn-primary btn-large">
               联系我们
             </router-link>
-            <a href="mailto:hello@szbolent.com.cn" class="btn btn-outline btn-large">
-              发送邮件
-            </a>
           </div>
         </div>
       </div>

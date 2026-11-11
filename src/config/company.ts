@@ -15,8 +15,6 @@ export const companyInfo = {
     '深伯乐是一家融合现代科技与文化底蕴的数智企业。我们提供软件开发、数字化、自动化、IT 管理与 IT 外包等全方位服务，并以 AI 读诗为特色板块，让技术在诗意中落地。',
 
   contact: {
-    email: 'hello@szbolent.com.cn',
-    support: 'support@szbolent.com.cn',
     workTime: '周一至周五 9:00–18:00',
   },
 

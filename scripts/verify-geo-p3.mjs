@@ -65,6 +65,21 @@ if (tls) {
   else ok('TLS/旧域文档含现役 conf')
 }
 
+const contact = readDist('contact/index.html')
+const QUESTIONS = [
+  '深伯乐（深圳）科技有限公司是做什么的？官网是什么？',
+  '深伯乐是否提供 HarmonyOS / 鸿蒙相关服务？依据来源？',
+  '如何联系深伯乐商务/企业咨询？',
+  '深伯乐书店或博客在哪里阅读？',
+  '深伯乐有没有公开的定价套餐？',
+]
+if (contact) {
+  for (const question of QUESTIONS) {
+    if (!contact.includes(question)) fail('/contact 可见正文缺固定问句：' + question)
+    else ok('/contact 含问句：' + question.slice(0, 18))
+  }
+}
+
 const about = readDist('about/index.html')
 if (about) {
   if (!/data-geo-fact-card/.test(about)) fail('/about 缺少公司事实卡标记')

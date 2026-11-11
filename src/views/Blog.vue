@@ -101,8 +101,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { getShelfFeed, type ShelfFeedItem } from '@/api/wordpress'
+import { applyPageSeo } from '@/composables/usePageSeo'
 
 const items = ref<ShelfFeedItem[]>([])
 const loading = ref(false)
@@ -138,6 +139,17 @@ const loadFeed = async () => {
     loading.value = false
   }
 }
+
+watch([loading, error, items], () => {
+  if (loading.value) return
+  const indexable = !error.value && items.value.length > 0
+  applyPageSeo({
+    title: '书店',
+    description: '深伯乐书店节选：诗词与文化内容同源陈列于 szbolent.com/blog',
+    path: '/blog',
+    robots: indexable ? 'index, follow' : 'noindex, follow',
+  })
+})
 
 onMounted(() => {
   loadFeed()

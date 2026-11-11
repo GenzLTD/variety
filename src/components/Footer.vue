@@ -54,7 +54,7 @@
               </li>
               <li>
                 <Mail :size="18" class="icon" />
-                <span>hello@szbolent.com.cn</span>
+                <router-link to="/contact">联系表单（当前无公开邮箱）</router-link>
               </li>
             </ul>
           </div>

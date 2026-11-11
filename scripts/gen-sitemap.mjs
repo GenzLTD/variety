@@ -14,6 +14,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { SITE, buildSitemapEntries, isoDate } from './lib/geo-catalog.mjs'
+import { readBookstoreIndexable } from './lib/bookstore-indexable.mjs'
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..')
 const CHECK = process.argv.includes('--check')
@@ -64,7 +65,8 @@ function render(entries) {
 }
 
 function main() {
-  const entries = buildSitemapEntries(loadMenuItems())
+  const indexBlog = readBookstoreIndexable(join(ROOT, 'dist')).indexable
+  const entries = buildSitemapEntries(loadMenuItems(), { indexBlog })
   const xml = render(entries)
 
   if (CHECK) {
@@ -75,7 +77,9 @@ function main() {
 
   mkdirSync(dirname(OUT), { recursive: true })
   writeFileSync(OUT, xml, 'utf8')
-  console.log(`[gen-sitemap] wrote ${OUT} (${entries.length} urls, lastmod=${LASTMOD})`)
+  console.log(
+    `[gen-sitemap] wrote ${OUT} (${entries.length} urls, lastmod=${LASTMOD}, blog=${indexBlog ? 'listed' : 'omitted'})`
+  )
 }
 
 main()

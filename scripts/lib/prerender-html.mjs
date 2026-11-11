@@ -16,6 +16,7 @@ export function escapeHtml(s) {
  *   description: string,
  *   canonical: string,
  *   ogTitle?: string,
+ *   robots?: string,
  *   body: string,
  *   jsonLd?: object | object[],
  * }} opts
@@ -50,6 +51,15 @@ export function injectSeoAndBody(html, opts) {
     out = out.replace(/<link rel="canonical" href="[^"]*">/i, `<link rel="canonical" href="${escapeHtml(canonical)}">`)
   } else {
     out = out.replace('</head>', `    <link rel="canonical" href="${escapeHtml(canonical)}">\n  </head>`)
+  }
+
+  if (opts.robots) {
+    const robotsTag = `<meta name="robots" content="${escapeHtml(opts.robots)}">`
+    if (/<meta name="robots" content="/i.test(out)) {
+      out = out.replace(/<meta name="robots" content="[^"]*">/i, robotsTag)
+    } else {
+      out = out.replace('</head>', `    ${robotsTag}\n  </head>`)
+    }
   }
 
   if (opts.jsonLd) {

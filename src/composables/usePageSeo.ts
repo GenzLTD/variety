@@ -9,6 +9,8 @@ export interface PageSeoInput {
   description?: string
   /** 路径，如 /about；默认 location.pathname */
   path?: string
+  /** 例如 index, follow 或 noindex, follow */
+  robots?: string
 }
 
 function upsertMeta(selector: string, attr: 'name' | 'property', key: string, content: string) {
@@ -49,6 +51,9 @@ export function applyPageSeo(input: PageSeoInput = {}) {
   upsertMeta('meta[property="og:description"]', 'property', 'og:description', description)
   upsertMeta('meta[property="og:url"]', 'property', 'og:url', canonical)
   upsertCanonical(canonical)
+  if (input.robots) {
+    upsertMeta('meta[name="robots"]', 'name', 'robots', input.robots)
+  }
 
   return { title, description, canonical }
 }
